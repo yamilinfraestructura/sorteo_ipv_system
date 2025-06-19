@@ -31,12 +31,12 @@ class _ListGanadoresScreenState extends State<ListGanadoresScreen> {
     String where = '';
     List<dynamic> args = [];
 
-    if (_barrioSeleccionado != null) {
+    if (_barrioSeleccionado != null && _barrioSeleccionado != 'Todos') {
       where += 'barrio = ?';
       args.add(_barrioSeleccionado);
     }
 
-    if (_grupoSeleccionado != null) {
+    if (_grupoSeleccionado != null && _grupoSeleccionado != 'Todos') {
       if (where.isNotEmpty) where += ' AND ';
       where += 'grupo = ?';
       args.add(_grupoSeleccionado);
@@ -79,8 +79,10 @@ class _ListGanadoresScreenState extends State<ListGanadoresScreen> {
     final grupos = await db.rawQuery('SELECT DISTINCT grupo FROM ganadores');
 
     setState(() {
-      barriosDisponibles = barrios.map((e) => e['barrio'] as String).toList();
-      gruposDisponibles = grupos.map((e) => e['grupo'] as String).toList();
+      barriosDisponibles = ['Todos', ...barrios.map((e) => e['barrio'] as String).toList()];
+      gruposDisponibles = ['Todos', ...grupos.map((e) => e['grupo'] as String).toList()];
+      if (_barrioSeleccionado == null) _barrioSeleccionado = 'Todos';
+      if (_grupoSeleccionado == null) _grupoSeleccionado = 'Todos';
     });
   }
 
@@ -90,16 +92,27 @@ class _ListGanadoresScreenState extends State<ListGanadoresScreen> {
     required String? value,
     required void Function(String?) onChanged,
   }) {
-    return DropdownButton<String>(
-      value: value,
-      hint: Text(label),
-      items: items
-          .map((item) => DropdownMenuItem(
-                value: item,
-                child: Text(item),
-              ))
-          .toList(),
-      onChanged: onChanged,
+    return Expanded(
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: value,
+            isExpanded: true,
+            items: items
+                .map((item) => DropdownMenuItem(
+                      value: item,
+                      child: Text(item),
+                    ))
+                .toList(),
+            onChanged: onChanged,
+          ),
+        ),
+      ),
     );
   }
 

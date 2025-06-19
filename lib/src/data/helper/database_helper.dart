@@ -58,4 +58,10 @@ class DatabaseHelper {
     }
     await batch.commit(noResult: true);
   }
+
+  static Future<List<String>> obtenerBarrios() async {
+    final db = await database;
+    final result = await db.rawQuery('SELECT DISTINCT barrio FROM participantes');
+    return result.map((e) => e['barrio'] as String).toList();
+  }
 }

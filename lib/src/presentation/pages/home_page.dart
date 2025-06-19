@@ -31,6 +31,8 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           NavigationRail(
             selectedIndex: selectedIndex,
@@ -43,23 +45,23 @@ class _HomePageState extends State<HomePage> {
             destinations: const [
               NavigationRailDestination(
                 icon: Icon(Icons.upload_file),
-                label: Text('Importar'),
+                label: Text('Importar Padrón'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.search),
-                label: Text('Buscar'),
+                label: Text('Buscar y Registrar'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.list_alt),
-                label: Text('Ganadores'),
+                label: Text('Ganadores Sorteados'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.download),
-                label: Text('Exportar'),
+                label: Text('Exportar Ganadores'),
               ),
             ],
           ),
-          const VerticalDivider(thickness: 1, width: 1),
+          const VerticalDivider(thickness: 1, width: 10),
           // Área principal
           Expanded(
             child: Column(
