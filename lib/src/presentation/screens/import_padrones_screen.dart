@@ -24,7 +24,14 @@ class _ImportPadronesScreenState extends State<ImportPadronesScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarBarrios();
+    _verificarYCargar();
+  }
+
+  Future<void> _verificarYCargar() async {
+    // Verificar estructura de la tabla
+    await DatabaseHelper.verificarEstructura();
+    // Cargar barrios
+    await _cargarBarrios();
   }
 
   Future<void> _cargarBarrios() async {
@@ -40,52 +47,88 @@ class _ImportPadronesScreenState extends State<ImportPadronesScreen> {
 
   Future<void> _cargarParticipantesBarrio(String barrio) async {
     final db = await DatabaseHelper.database;
-    final result = await db.query('participantes', where: 'barrio = ?', whereArgs: [barrio]);
+    final result = await db.query(
+      'participantes', 
+      where: 'neighborhood = ?', 
+      whereArgs: [barrio]
+    );
     setState(() {
       _participantesBarrio = result;
     });
   }
 
   Future<void> importarExcel() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['xlsx'],
-    );
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
 
-    if (result != null) {
-      final file = File(result.files.single.path!);
-      final bytes = file.readAsBytesSync();
-      final excel = Excel.decodeBytes(bytes);
+      if (result != null) {
+        setState(() => mensaje = 'Procesando archivo...');
+        
+        File file = File(result.files.single.path!);
+        final bytes = file.readAsBytesSync();
+        final excel = Excel.decodeBytes(bytes);
 
-      List<Map<String, dynamic>> listaParticipantes = [];
+        final table = excel.tables.values.first; // Tomamos la primera hoja
+        final rows = table.rows;
 
-      for (var table in excel.tables.keys) {
-        for (var row in excel.tables[table]!.rows.skip(1)) {
-          if (row.length >= 5) {
-            listaParticipantes.add({
-              'dni': row[0]?.value.toString(),
-              'nombre': row[1]?.value.toString(),
-              'barrio': row[2]?.value.toString(),
-              'grupo': row[3]?.value.toString(),
-              'numero_bolilla': int.tryParse(row[4]?.value.toString() ?? '0'),
-            });
-          }
+        // Extraemos info general
+        String grupo = rows[3][1]?.value.toString().trim() ?? '';      // Fila 4, Col B
+        String barrio = rows[5][1]?.value.toString().trim() ?? '';     // Fila 6, Col B
+
+        if (grupo.isEmpty || barrio.isEmpty) {
+          setState(() => mensaje = 'Error: No se encontró el grupo o barrio en el archivo.');
+          return;
         }
-      }
 
-      await DatabaseHelper.insertarParticipantesLote(listaParticipantes);
-      await _cargarBarrios();
-      if (_barrioSeleccionado != null) {
-        await _cargarParticipantesBarrio(_barrioSeleccionado!);
-      }
+        List<Map<String, dynamic>> participantes = [];
 
-      setState(() {
-        mensaje = 'Importados ${listaParticipantes.length} participantes correctamente.';
-      });
-    } else {
-      setState(() {
-        mensaje = 'Importación cancelada.';
-      });
+        for (int i = 8; i < rows.length; i++) {
+          final row = rows[i];
+
+          if (row.length < 5 || row[1] == null) continue; // Evitar filas vacías o mal formateadas
+
+          int position = int.tryParse(row[1]?.value.toString() ?? '') ?? 0;
+          int order = int.tryParse(row[2]?.value.toString() ?? '') ?? 0;
+          String documento = row[3]?.value.toString().trim() ?? '';
+          String nombre = row[4]?.value.toString().trim() ?? '';
+
+          if (documento.isEmpty || nombre.isEmpty) continue; // Filtrar vacíos
+
+          participantes.add({
+            'position': position,
+            'order_number': order,
+            'document': documento,
+            'full_name': nombre,
+            'group': grupo,
+            'neighborhood': barrio,
+          });
+        }
+
+        if (participantes.isNotEmpty) {
+          setState(() => mensaje = 'Guardando participantes en la base de datos...');
+          
+          await DatabaseHelper.limpiarParticipantes();
+          await DatabaseHelper.insertarParticipantesLote(participantes);
+          
+          // Recargar la vista
+          await _cargarBarrios();
+          if (_barrioSeleccionado != null) {
+            await _cargarParticipantesBarrio(_barrioSeleccionado!);
+          }
+
+          setState(() => mensaje = 'Importación exitosa: ${participantes.length} participantes agregados.');
+        } else {
+          setState(() => mensaje = 'Error: No se encontraron participantes válidos en el archivo.');
+        }
+      } else {
+        setState(() => mensaje = 'Importación cancelada por el usuario.');
+      }
+    } catch (e) {
+      setState(() => mensaje = 'Error durante la importación: ${e.toString()}');
+      print('Error en importarExcel: $e');
     }
   }
 
@@ -153,8 +196,8 @@ class _ImportPadronesScreenState extends State<ImportPadronesScreen> {
                       itemBuilder: (context, index) {
                         final p = _participantesBarrio[index];
                         return ListTile(
-                          title: Text(p['nombre'] ?? ''),
-                          subtitle: Text('DNI: ${p['dni']} | Grupo: ${p['grupo']} | Bolilla: ${p['numero_bolilla']}'),
+                          title: Text(p['full_name'] ?? ''),
+                          subtitle: Text('Documento: ${p['document']} | Grupo: ${p['group']} | Barrio: ${p['neighborhood']}'),
                         );
                       },
                     ),

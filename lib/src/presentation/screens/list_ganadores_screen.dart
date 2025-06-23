@@ -32,13 +32,13 @@ class _ListGanadoresScreenState extends State<ListGanadoresScreen> {
     List<dynamic> args = [];
 
     if (_barrioSeleccionado != null && _barrioSeleccionado != 'Todos') {
-      where += 'barrio = ?';
+      where += 'neighborhood = ?';
       args.add(_barrioSeleccionado);
     }
 
     if (_grupoSeleccionado != null && _grupoSeleccionado != 'Todos') {
       if (where.isNotEmpty) where += ' AND ';
-      where += 'grupo = ?';
+      where += '"group" = ?';
       args.add(_grupoSeleccionado);
     }
 
@@ -61,8 +61,8 @@ class _ListGanadoresScreenState extends State<ListGanadoresScreen> {
       if (participante.isNotEmpty) {
         lista.add({
           ...item,
-          'nombre': participante.first['nombre'],
-          'dni': participante.first['dni'],
+          'full_name': participante.first['full_name'],
+          'document': participante.first['document'],
         });
       }
     }
@@ -75,14 +75,14 @@ class _ListGanadoresScreenState extends State<ListGanadoresScreen> {
   Future<void> _cargarFiltros() async {
     final db = await DatabaseHelper.database;
 
-    final barrios = await db.rawQuery('SELECT DISTINCT barrio FROM ganadores');
-    final grupos = await db.rawQuery('SELECT DISTINCT grupo FROM ganadores');
+    final barrios = await db.rawQuery('SELECT DISTINCT neighborhood FROM ganadores');
+    final grupos = await db.rawQuery('SELECT DISTINCT "group" FROM ganadores');
 
     setState(() {
-      barriosDisponibles = ['Todos', ...barrios.map((e) => e['barrio'] as String).toList()];
-      gruposDisponibles = ['Todos', ...grupos.map((e) => e['grupo'] as String).toList()];
-      if (_barrioSeleccionado == null) _barrioSeleccionado = 'Todos';
-      if (_grupoSeleccionado == null) _grupoSeleccionado = 'Todos';
+      barriosDisponibles = ['Todos', ...barrios.map((e) => e['neighborhood'] as String)];
+      gruposDisponibles = ['Todos', ...grupos.map((e) => e['group'] as String)];
+      _barrioSeleccionado ??= 'Todos';
+      _grupoSeleccionado ??= 'Todos';
     });
   }
 
@@ -165,9 +165,9 @@ class _ListGanadoresScreenState extends State<ListGanadoresScreen> {
                       final g = _ganadores[index];
                       return Card(
                         child: ListTile(
-                          title: Text("${g['nombre']} (DNI: ${g['dni']})"),
+                          title: Text("${g['full_name']} (DNI: ${g['document']})"),
                           subtitle: Text(
-                              "Bolilla: ${g['numero_bolilla']} | Barrio: ${g['barrio']} | Grupo: ${g['grupo']}"),
+                              "Posición: ${g['position']} | Barrio: ${g['neighborhood']} | Grupo: ${g['group']}"),
                           trailing: Text("Fecha: ${g['fecha']}"),
                         ),
                       );
