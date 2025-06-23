@@ -83,6 +83,19 @@ class _ImportPadronesScreenState extends State<ImportPadronesScreen> {
           return;
         }
 
+        // Verificar si ya existe un padrón para ese barrio y grupo
+        final db = await DatabaseHelper.database;
+        final existePadron = await db.query(
+          'participantes',
+          where: 'neighborhood = ? AND "group" = ?',
+          whereArgs: [barrio, grupo],
+          limit: 1,
+        );
+        if (existePadron.isNotEmpty) {
+          setState(() => mensaje = 'Ya existe un padrón cargado para el barrio "$barrio" y grupo "$grupo".');
+          return;
+        }
+
         List<Map<String, dynamic>> participantes = [];
 
         for (int i = 8; i < rows.length; i++) {
@@ -109,17 +122,13 @@ class _ImportPadronesScreenState extends State<ImportPadronesScreen> {
 
         if (participantes.isNotEmpty) {
           setState(() => mensaje = 'Guardando participantes en la base de datos...');
-          
-          await DatabaseHelper.limpiarParticipantes();
           await DatabaseHelper.insertarParticipantesLote(participantes);
-          
           // Recargar la vista
           await _cargarBarrios();
           if (_barrioSeleccionado != null) {
             await _cargarParticipantesBarrio(_barrioSeleccionado!);
           }
-
-          setState(() => mensaje = 'Importación exitosa: ${participantes.length} participantes agregados.');
+          setState(() => mensaje = 'Importación exitosa: ${participantes.length} participantes agregados para "$barrio" - "$grupo".');
         } else {
           setState(() => mensaje = 'Error: No se encontraron participantes válidos en el archivo.');
         }

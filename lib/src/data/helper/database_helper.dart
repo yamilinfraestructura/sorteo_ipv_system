@@ -11,9 +11,6 @@ class DatabaseHelper {
     String dbPath = await databaseFactoryFfi.getDatabasesPath();
     String path = join(dbPath, 'sorteo.db');
 
-    // Forzar eliminación de la base de datos existente
-    await databaseFactoryFfi.deleteDatabase(path);
-
     _db = await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
