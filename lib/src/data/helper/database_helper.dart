@@ -14,7 +14,7 @@ class DatabaseHelper {
     _db = await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 3, // Incrementamos la versión
+        version: 4, // Incrementamos la versión para forzar onUpgrade
         onCreate: (db, version) async {
           await db.execute('''
             CREATE TABLE participantes (
@@ -24,7 +24,9 @@ class DatabaseHelper {
               document TEXT,
               full_name TEXT,
               "group" TEXT,
-              neighborhood TEXT
+              neighborhood TEXT,
+              viviendas INTEGER,
+              familias INTEGER
             )
           ''');
 
@@ -43,33 +45,15 @@ class DatabaseHelper {
           ''');
         },
         onUpgrade: (db, oldVersion, newVersion) async {
-          // Siempre recrear las tablas en la migración
-          await db.execute('DROP TABLE IF EXISTS participantes');
-          await db.execute('DROP TABLE IF EXISTS ganadores');
-          await db.execute('''
-            CREATE TABLE participantes (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              position INTEGER,
-              order_number INTEGER,
-              document TEXT,
-              full_name TEXT,
-              "group" TEXT,
-              neighborhood TEXT
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE ganadores (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              participanteId INTEGER,
-              fecha TEXT,
-              neighborhood TEXT,
-              "group" TEXT,
-              position INTEGER,
-              order_number INTEGER,
-              document TEXT,
-              full_name TEXT
-            )
-          ''');
+          // Si la tabla participantes no tiene viviendas/familias, las agregamos
+          final columns = await db.rawQuery('PRAGMA table_info(participantes)');
+          final colNames = columns.map((c) => c['name']).toSet();
+          if (!colNames.contains('viviendas')) {
+            await db.execute('ALTER TABLE participantes ADD COLUMN viviendas INTEGER;');
+          }
+          if (!colNames.contains('familias')) {
+            await db.execute('ALTER TABLE participantes ADD COLUMN familias INTEGER;');
+          }
         },
       ),
     );

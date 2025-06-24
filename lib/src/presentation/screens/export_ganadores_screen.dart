@@ -2,23 +2,73 @@ import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-
-//Archivos importados
 import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
+import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 
-
-class ExportGanadoresScreen extends StatelessWidget {
+class ExportGanadoresScreen extends StatefulWidget {
   const ExportGanadoresScreen({super.key});
 
-  Future<void> exportarExcel(BuildContext context) async {
+  @override
+  State<ExportGanadoresScreen> createState() => _ExportGanadoresScreenState();
+}
+
+class _ExportGanadoresScreenState extends State<ExportGanadoresScreen> {
+  List<String> _barrios = [];
+  String? _barrioSeleccionado;
+  List<String> _grupos = [];
+  String? _grupoSeleccionado;
+  String _mensaje = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarBarrios();
+  }
+
+  Future<void> _cargarBarrios() async {
+    final barrios = await DatabaseHelper.obtenerBarrios();
+    setState(() {
+      _barrios = barrios;
+      if (_barrios.isNotEmpty && _barrioSeleccionado == null) {
+        _barrioSeleccionado = _barrios.first;
+      }
+    });
+    if (_barrioSeleccionado != null) {
+      await _cargarGrupos(_barrioSeleccionado!);
+    }
+  }
+
+  Future<void> _cargarGrupos(String barrio) async {
     final db = await DatabaseHelper.database;
-    final ganadores = await db.query('ganadores', orderBy: 'fecha ASC');
-    if (ganadores.isEmpty) {
-      _mostrarMensaje(context, 'No hay ganadores registrados.');
+    final result = await db.rawQuery(
+      'SELECT DISTINCT "group" FROM participantes WHERE neighborhood = ?',
+      [barrio],
+    );
+    setState(() {
+      _grupos = result.map((e) => e['group'] as String).toList();
+      if (_grupos.isNotEmpty && _grupoSeleccionado == null) {
+        _grupoSeleccionado = _grupos.first;
+      }
+    });
+  }
+
+  Future<void> exportarExcel(BuildContext context) async {
+    if (_barrioSeleccionado == null || _grupoSeleccionado == null) {
+      setState(() => _mensaje = 'Seleccioná un barrio y grupo para exportar.');
       return;
     }
-
-    // Obtener datos generales del primer ganador (asumiendo que todos son del mismo grupo/barrio)
+    final db = await DatabaseHelper.database;
+    final ganadores = await db.query(
+      'ganadores',
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [_barrioSeleccionado, _grupoSeleccionado],
+      orderBy: 'position ASC',
+    );
+    if (ganadores.isEmpty) {
+      _mostrarMensaje(context, 'No hay ganadores registrados para este barrio y grupo.');
+      return;
+    }
+    // Obtener datos generales del primer ganador
     final participante = await db.query(
       'participantes',
       where: 'id = ?',
@@ -27,35 +77,28 @@ class ExportGanadoresScreen extends StatelessWidget {
     final p = participante.isNotEmpty ? participante.first : {};
     final grupo = p['group']?.toString() ?? '';
     final barrio = p['neighborhood']?.toString() ?? '';
-    // Aquí podrías obtener el número de viviendas/familias si lo guardás en la base
-    final numViviendasFamilias = '';
+    final viviendas = p['viviendas'] is int ? p['viviendas'] : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
+    final familias = p['familias'] is int ? p['familias'] : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
 
     final excel = Excel.createExcel();
     final sheet = excel['Ganadores'];
-
     // Fila 2: Título (B-F combinadas)
-    sheet.appendRow([null, TextCellValue('Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025')]);
+    sheet.appendRow([null, TextCellValue('Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025'), null, null, null, null]);
     sheet.merge(CellIndex.indexByString("B2"), CellIndex.indexByString("F2"));
-
     // Fila 3: vacía
     sheet.appendRow([]);
-
     // Fila 4: Grupo (B-F combinadas)
-    sheet.appendRow([null, TextCellValue('Grupo: $grupo')]);
+    sheet.appendRow([null, TextCellValue('Grupo: $grupo'), null, null, null, null]);
     sheet.merge(CellIndex.indexByString("B4"), CellIndex.indexByString("F4"));
-
     // Fila 5: Número de viviendas y familias (B-F combinadas)
-    sheet.appendRow([null, TextCellValue('3 Viviendas, 40 Familias')]); // Modificar si tenés el dato real
+    sheet.appendRow([null, TextCellValue('$viviendas Viviendas, $familias Familias'), null, null, null, null]);
     sheet.merge(CellIndex.indexByString("B5"), CellIndex.indexByString("F5"));
-
     // Fila 6: Barrio (B-F combinadas)
-    sheet.appendRow([null, TextCellValue('Barrio: $barrio')]);
+    sheet.appendRow([null, TextCellValue('Barrio: $barrio'), null, null, null, null]);
     sheet.merge(CellIndex.indexByString("B6"), CellIndex.indexByString("F6"));
-
     // Fila 7 y 8: vacías
     sheet.appendRow([]);
     sheet.appendRow([]);
-
     // Fila 9: Encabezados (B-E)
     sheet.appendRow([
       null,
@@ -64,7 +107,6 @@ class ExportGanadoresScreen extends StatelessWidget {
       TextCellValue('Documento'),
       TextCellValue('Apellido Nombre'),
     ]);
-
     // Estilos de encabezado
     for (var col = 1; col <= 4; col++) {
       final headerCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 8));
@@ -73,7 +115,6 @@ class ExportGanadoresScreen extends StatelessWidget {
         horizontalAlign: HorizontalAlign.Center,
       );
     }
-
     // Fila 10 en adelante: datos (B-E)
     int rowIndex = 9;
     for (var ganador in ganadores) {
@@ -86,23 +127,27 @@ class ExportGanadoresScreen extends StatelessWidget {
         final p = participante.first;
         sheet.appendRow([
           null,
-          IntCellValue(p['position'] as int),
+          IntCellValue(ganador['position'] as int),
           IntCellValue(p['order_number'] as int),
-          DoubleCellValue(double.tryParse(p['document'].toString().replaceAll('.', '')) ?? 0),
+          TextCellValue(p['document'].toString()),
           TextCellValue(p['full_name'].toString()),
         ]);
         rowIndex++;
       }
     }
-
     // Ajustar el ancho de las columnas B-E
     for (var col = 1; col <= 4; col++) {
       sheet.setColumnWidth(col, col == 4 ? 30.0 : 15.0);
     }
-
+    String cleanFileName(String input) {
+      // Reemplaza caracteres no permitidos por guion bajo
+      return input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    }
+    final safeBarrio = cleanFileName(barrio);
+    final safeGrupo = cleanFileName(grupo);
     final savePath = await FilePicker.platform.saveFile(
       dialogTitle: 'Guardar archivo Excel',
-      fileName: 'listado_ganadores.xlsx',
+      fileName: 'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx',
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
     );
@@ -121,12 +166,21 @@ class ExportGanadoresScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Exportación"),
-        content: Text(msg),
+        title: Text(
+          "Exportación",
+          style: TextStyle(fontSize: ResponsiveConfig.subtitleSize),
+        ),
+        content: Text(
+          msg,
+          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Aceptar"),
+            child: Text(
+              "Aceptar",
+              style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+            ),
           )
         ],
       ),
@@ -135,11 +189,118 @@ class ExportGanadoresScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ElevatedButton.icon(
-        icon: const Icon(Icons.download),
-        label: const Text("Exportar ganadores a Excel"),
-        onPressed: () => exportarExcel(context),
+    return Padding(
+      padding: EdgeInsets.all(ResponsiveConfig.paddingLarge),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Seleccioná un barrio',
+                    labelStyle: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(ResponsiveConfig.borderRadius),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: ResponsiveConfig.paddingMedium,
+                      vertical: ResponsiveConfig.paddingSmall,
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _barrioSeleccionado,
+                      isExpanded: true,
+                      style: TextStyle(
+                        fontSize: ResponsiveConfig.bodySize,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
+                      items: _barrios
+                          .map((barrio) => DropdownMenuItem(
+                                value: barrio,
+                                child: Text(barrio),
+                              ))
+                          .toList(),
+                      onChanged: (val) async {
+                        setState(() {
+                          _barrioSeleccionado = val;
+                          _grupoSeleccionado = null;
+                        });
+                        if (val != null) await _cargarGrupos(val);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: ResponsiveConfig.spacingMedium),
+              Expanded(
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Seleccioná un grupo',
+                    labelStyle: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(ResponsiveConfig.borderRadius),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: ResponsiveConfig.paddingMedium,
+                      vertical: ResponsiveConfig.paddingSmall,
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _grupoSeleccionado,
+                      isExpanded: true,
+                      style: TextStyle(
+                        fontSize: ResponsiveConfig.bodySize,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
+                      items: _grupos
+                          .map((grupo) => DropdownMenuItem(
+                                value: grupo,
+                                child: Text(grupo),
+                              ))
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _grupoSeleccionado = val;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: ResponsiveConfig.spacingLarge),
+          ElevatedButton.icon(
+            icon: Icon(Icons.download, size: ResponsiveConfig.iconSizeMedium),
+            label: Text(
+              "Exportar ganadores a Excel",
+              style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                horizontal: ResponsiveConfig.paddingMedium,
+                vertical: ResponsiveConfig.paddingSmall,
+              ),
+              minimumSize: Size(
+                ResponsiveConfig.minButtonWidth,
+                ResponsiveConfig.buttonHeight,
+              ),
+            ),
+            onPressed: () => exportarExcel(context),
+          ),
+          SizedBox(height: ResponsiveConfig.spacingMedium),
+          if (_mensaje.isNotEmpty)
+            Text(
+              _mensaje,
+              style: TextStyle(
+                fontSize: ResponsiveConfig.bodySize,
+                color: Colors.red,
+              ),
+            ),
+        ],
       ),
     );
   }

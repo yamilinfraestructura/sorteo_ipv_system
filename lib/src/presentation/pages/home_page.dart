@@ -30,6 +30,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.orange,
+        title: Text('Sorteo oficial de Viviendas del IPV- San Juan 2025'),
+        elevation: 3.0,
+      ),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.start,
