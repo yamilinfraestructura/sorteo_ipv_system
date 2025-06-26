@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:sorteo_ipv_system/src/presentation/pages/home_page.dart';
+import 'package:get/get.dart';
+
+///Importación de archivos
+import 'package:sorteo_ipv_system/src/config/bindings/app_binding.dart';
 import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
+import 'package:sorteo_ipv_system/src/presentation/pages/home_page.dart';
+void main() {
+  runApp(const MyApp());
+}
 
-void main() => runApp(const MyApp());
-
-// Widget para inicializar ResponsiveConfig
 class ResponsiveInit extends StatelessWidget {
   final Widget child;
   const ResponsiveInit({super.key, required this.child});
@@ -21,8 +25,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Material App',
+      initialBinding: AppBinding(), // 👈 se aplica aquí
       home: ResponsiveInit(child: HomePage()),
       theme: ThemeData(
         useMaterial3: true,
