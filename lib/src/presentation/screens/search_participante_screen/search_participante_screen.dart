@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:sorteo_ipv_system/src/presentation/screens/search_participante_screen/components/search_result_component.dart';
-import 'package:sorteo_ipv_system/src/presentation/screens/search_participante_screen/widgets/search_participante_form_widget.dart';
 import 'controllers/search_participante_controller.dart';
 
 class SearchParticipanteScreen extends StatelessWidget {
@@ -18,9 +16,9 @@ class SearchParticipanteScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Text('Viviendas a sortear: \\${controller.viviendasGrupo.value}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text('Familias empadronadas: \\${controller.familiasGrupo.value}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text('Última posición sorteada: \\${controller.ultimaPosicion.value}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('Viviendas a sortear: \\ ${controller.viviendasGrupo.value}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('Familias empadronadas: \\ ${controller.familiasGrupo.value}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('Última posición sorteada: \\ ${controller.ultimaPosicion.value}', style: const TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 20),
@@ -111,8 +109,8 @@ class SearchParticipanteScreen extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final g = controller.ganadoresRecientes[index];
                         return ListTile(
-                          title: Text(g['full_name'] ?? ''),
-                          subtitle: Text('DNI: \\${g['document']} | Bolilla: \\${g['position']} | Barrio: \\${g['neighborhood']} | Grupo: \\${g['group']}'),
+                          title: Text('${g['full_name']} | Número de SORTEO: \\ ${g['order_number']}' ?? ''),
+                          subtitle: Text('POSICIÓN: \\ ${g['position']} | DNI: \\${g['document']} | Barrio: \\${g['neighborhood']} | Grupo: \\${g['group']}'),
                           trailing: Text('Fecha: \\${g['fecha']}'),
                         );
                       },

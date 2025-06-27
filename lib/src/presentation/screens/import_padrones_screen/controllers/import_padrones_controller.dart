@@ -1,30 +1,43 @@
+// Controlador para la pantalla de importación de padrones
 import 'package:get/get.dart';
 import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:excel/excel.dart';
+import 'package:flutter/services.dart';
+import 'package:sorteo_ipv_system/src/presentation/screens/search_participante_screen/controllers/search_participante_controller.dart';
+import 'package:sorteo_ipv_system/src/presentation/screens/list_ganadores_screen/controllers/list_ganadores_controller.dart';
 
 class ImportPadronesController extends GetxController {
+  // Lista observable de padrones importados
   var padrones = <Map<String, dynamic>>[].obs;
+  // Lista de barrios disponibles
   var barrios = <String>['Seleccionar'].obs;
+  // Lista de grupos disponibles
   var grupos = <String>['Seleccionar'].obs;
+  // Barrio seleccionado
   var barrioSeleccionado = 'Seleccionar'.obs;
+  // Grupo seleccionado
   var grupoSeleccionado = 'Seleccionar'.obs;
+  // Participantes filtrados por barrio y grupo
   var participantesFiltrados = <Map<String, dynamic>>[].obs;
+  // Mensaje de estado para la UI
   var mensaje = 'Ningún archivo importado aún.'.obs;
 
   @override
   void onInit() {
     super.onInit();
-    verificarYCargar();
+    verificarYCargar(); // Verifica la estructura de la BD y carga barrios
   }
 
+  /// Verifica la estructura de la base de datos y carga los barrios disponibles.
   Future<void> verificarYCargar() async {
     await DatabaseHelper.verificarEstructura();
     await cargarBarrios();
   }
 
+  /// Carga los barrios disponibles desde la base de datos.
   Future<void> cargarBarrios() async {
     final barriosDb = await DatabaseHelper.obtenerBarrios();
     barrios.value = ['Seleccionar', ...barriosDb];
@@ -40,6 +53,7 @@ class ImportPadronesController extends GetxController {
     }
   }
 
+  /// Carga los grupos disponibles para un barrio específico.
   Future<void> cargarGrupos(String barrio) async {
     final db = await DatabaseHelper.database;
     final result = await db.rawQuery(
@@ -58,6 +72,7 @@ class ImportPadronesController extends GetxController {
     }
   }
 
+  /// Carga los participantes filtrados por barrio y grupo.
   Future<void> cargarParticipantesBarrioGrupo(String barrio, String grupo) async {
     final db = await DatabaseHelper.database;
     final result = await db.query(
@@ -68,6 +83,7 @@ class ImportPadronesController extends GetxController {
     participantesFiltrados.value = result;
   }
 
+  /// Maneja el cambio de barrio en el filtro y actualiza los grupos y participantes.
   void onBarrioChanged(String? val, [BuildContext? context]) async {
     if (val == 'Seleccionar') {
       if (grupoSeleccionado.value != 'Seleccionar') {
@@ -98,6 +114,7 @@ class ImportPadronesController extends GetxController {
     }
   }
 
+  /// Maneja el cambio de grupo en el filtro y actualiza los participantes.
   void onGrupoChanged(String? val, [BuildContext? context]) async {
     if (val == 'Seleccionar') {
       grupoSeleccionado.value = 'Seleccionar';
@@ -112,6 +129,7 @@ class ImportPadronesController extends GetxController {
     }
   }
 
+  /// Importa un archivo Excel, procesa los datos y los guarda en la base de datos.
   Future<void> importarExcel(BuildContext context) async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -150,23 +168,70 @@ class ImportPadronesController extends GetxController {
         );
         if (existePadron.isNotEmpty) {
           final actualizar = await showDialog<bool>(
+            // ignore: use_build_context_synchronously
             context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Padrón ya importado'),
-              content: Text('Ya existe un padrón para el barrio "$barrio" y grupo "$grupo". ¿Deseas actualizar los datos con el nuevo archivo?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Actualizar'),
-                ),
-              ],
-            ),
+            builder: (context) {
+              final focusNode = FocusNode();
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  return RawKeyboardListener(
+                    focusNode: focusNode,
+                    autofocus: true,
+                    onKey: (RawKeyEvent event) {
+                      if (event is RawKeyDownEvent &&
+                          (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                        Navigator.pop(context, true);
+                      }
+                    },
+                    child: AlertDialog(
+                      title: const Text('Padrón ya importado'),
+                      content: Text('Ya existe un padrón para el barrio "$barrio" y grupo "$grupo". ¿Deseas actualizar los datos con el nuevo archivo?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancelar'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Actualizar'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
           );
           if (actualizar != true) {
+            final focusNode = FocusNode();
+            await showDialog(
+              // ignore: use_build_context_synchronously
+              context: context,
+              builder: (context) => StatefulBuilder(
+                builder: (context, setState) {
+                  return RawKeyboardListener(
+                    focusNode: focusNode,
+                    autofocus: true,
+                    onKey: (RawKeyEvent event) {
+                      if (event is RawKeyDownEvent &&
+                          (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: AlertDialog(
+                      title: const Text('Importación cancelada'),
+                      content: const Text('El padrón no fue actualizado.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Aceptar'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
             mensaje.value = 'Importación cancelada. El padrón no fue actualizado.';
             return;
           }
@@ -200,10 +265,26 @@ class ImportPadronesController extends GetxController {
           mensaje.value = 'Guardando participantes en la base de datos...';
           await DatabaseHelper.insertarParticipantesLote(participantes);
           await cargarBarrios();
+          // Notificar al controlador de búsqueda para que recargue barrios y grupos
+          final searchController = Get.isRegistered<SearchParticipanteController>()
+              ? Get.find<SearchParticipanteController>()
+              : null;
+          if (searchController != null) {
+            await searchController.cargarBarrios();
+            await searchController.cargarGrupos();
+          }
+          // Notificar al controlador de ganadores para que recargue barrios y grupos
+          final ganadoresController = Get.isRegistered<ListGanadoresController>()
+              ? Get.find<ListGanadoresController>()
+              : null;
+          if (ganadoresController != null) {
+            await ganadoresController.cargarFiltros();
+          }
+          // ignore: unnecessary_null_comparison
           if (barrioSeleccionado.value != null) {
             await cargarGrupos(barrioSeleccionado.value);
           }
-          mensaje.value = 'Importación exitosa: \\${participantes.length} participantes agregados para "$barrio" - "$grupo".';
+          mensaje.value = 'Participantes importados correctamente.';
         } else {
           mensaje.value = 'Error: No se encontraron participantes válidos en el archivo.';
         }

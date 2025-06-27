@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
+import 'package:flutter/services.dart';
 
 class SearchParticipanteController extends GetxController {
   var barrios = <String>['Seleccionar'].obs;
@@ -207,48 +209,79 @@ class SearchParticipanteController extends GetxController {
   }
 
   void mostrarAlerta(BuildContext context, String titulo, String mensajeAlerta) {
+    final focusNode = FocusNode();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(mensajeAlerta),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Aceptar"),
-          )
-        ],
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) {
+          return RawKeyboardListener(
+            focusNode: focusNode,
+            autofocus: true,
+            onKey: (RawKeyEvent event) {
+              if (event is RawKeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                Navigator.pop(context);
+              }
+            },
+            child: AlertDialog(
+              title: Text(titulo, style: TextStyle(fontWeight: FontWeight.bold, fontSize: ResponsiveConfig.subtitleSize)),
+              content: Text(mensajeAlerta),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Aceptar"),
+                )
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   void mostrarAlertaParticipante(BuildContext context, Map<String, dynamic> part) {
+    final focusNode = FocusNode();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(
-          part['full_name'] ?? '',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
-          textAlign: TextAlign.center,
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("DNI: \\${part['document']}", style: const TextStyle(fontSize: 16)),
-            Text("Barrio: \\${part['neighborhood']}", style: const TextStyle(fontSize: 16)),
-            Text("Grupo: \\${part['group']}", style: const TextStyle(fontSize: 16)),
-            Text("Nro de Orden: \\${part['order_number']}", style: const TextStyle(fontSize: 16)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              registrarGanador(context);
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) {
+          return RawKeyboardListener(
+            focusNode: focusNode,
+            autofocus: true,
+            onKey: (RawKeyEvent event) {
+              if (event is RawKeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                Navigator.pop(context);
+                registrarGanador(context);
+              }
             },
-            child: const Text("Aceptar y Registrar", style: TextStyle(fontSize: 16, color: Colors.green, fontWeight: FontWeight.bold)),
-          )
-        ],
+            child: AlertDialog(
+              title: Text(
+                part['full_name'] ?? '',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: ResponsiveConfig.titleSize),
+                textAlign: TextAlign.center,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("DNI: \\${part['document']}", style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
+                  Text("Barrio: \\${part['neighborhood']}", style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
+                  Text("Grupo: \\${part['group']}", style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
+                  Text("Nro de Orden: \\${part['order_number']}", style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    registrarGanador(context);
+                  },
+                  child: Text("Aceptar y Registrar", style: TextStyle(fontSize: ResponsiveConfig.bodySize, color: Colors.green, fontWeight: FontWeight.bold)),
+                )
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/import_padrones_screen/controllers/import_padrones_controller.dart';
+import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 
 class ImportPadronesScreen extends StatelessWidget {
   const ImportPadronesScreen({super.key});
@@ -46,7 +47,7 @@ class ImportPadronesScreen extends StatelessWidget {
                       items: controller.barrios
                           .map((barrio) => DropdownMenuItem(
                                 value: barrio,
-                                child: Text(barrio),
+                                child: Text(barrio, style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
                               ))
                           .toList(),
                       onChanged: controller.onBarrioChanged,
@@ -68,7 +69,7 @@ class ImportPadronesScreen extends StatelessWidget {
                       items: controller.grupos
                           .map((grupo) => DropdownMenuItem(
                                 value: grupo,
-                                child: Text(grupo),
+                                child: Text(grupo, style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
                               ))
                           .toList(),
                       onChanged: controller.onGrupoChanged,
@@ -83,12 +84,12 @@ class ImportPadronesScreen extends StatelessWidget {
             child: Obx(() {
               if (controller.barrioSeleccionado.value == 'Seleccionar' ||
                   controller.grupoSeleccionado.value == 'Seleccionar') {
-                return const Center(
-                  child: Text('Selecciona un barrio y grupo para ver los participantes.'),
+                return Center(
+                  child: Text('Selecciona un barrio y grupo para ver los participantes.', style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
                 );
               } else if (controller.participantesFiltrados.isEmpty) {
-                return const Center(
-                  child: Text('No hay participantes para este barrio y grupo.'),
+                return Center(
+                  child: Text('No hay participantes para este barrio y grupo.', style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
                 );
               } else {
                 return Card(
@@ -98,9 +99,10 @@ class ImportPadronesScreen extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final p = controller.participantesFiltrados[index];
                       return ListTile(
-                        title: Text(p['full_name'] ?? ''),
+                        title: Text(p['full_name'] ?? '', style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
                         subtitle: Text(
-                          'Documento: \\${p['document']} | Grupo: \\${p['group']} | Barrio: \\${p['neighborhood']} | Viviendas: \\${p['viviendas'] ?? '-'} | Familias: \\${p['familias'] ?? '-'}',
+                          'Número de Sorteo \\ ${p['order_number']} | Documento: \\${p['document']} | Grupo: \\${p['group']} | Barrio: \\${p['neighborhood']} | Viviendas: \\${p['viviendas'] ?? '-'} | Familias: \\${p['familias'] ?? '-'}',
+                          style: TextStyle(fontSize: ResponsiveConfig.smallSize),
                         ),
                       );
                     },

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:sorteo_ipv_system/src/presentation/screens/export_ganadores_screen/components/export_ganadores_list_component.dart';
-import 'package:sorteo_ipv_system/src/presentation/screens/export_ganadores_screen/widgets/export_ganadores_form_widget.dart';
 import 'controllers/export_ganadores_controller.dart';
+import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 
 class ExportGanadoresScreen extends StatelessWidget {
   const ExportGanadoresScreen({super.key});
@@ -71,7 +70,7 @@ class ExportGanadoresScreen extends StatelessWidget {
           if (controller.mensaje.value.isNotEmpty)
             Text(
               controller.mensaje.value,
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: Colors.red, fontSize: ResponsiveConfig.bodySize),
             ),
         ],
       )),

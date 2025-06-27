@@ -4,21 +4,30 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart';
 import 'dart:io';
+import 'package:flutter/services.dart';
 
+// Controlador para la pantalla de exportación de ganadores
 class ExportGanadoresController extends GetxController {
+  // Lista de barrios disponibles
   var barrios = <String>[].obs;
+  // Lista de grupos disponibles
   var grupos = <String>[].obs;
+  // Barrio seleccionado
   var barrioSeleccionado = ''.obs;
+  // Grupo seleccionado
   var grupoSeleccionado = ''.obs;
+  // Mensaje de estado para la UI
   var mensaje = ''.obs;
+  // Estado de carga para mostrar spinners
   var isLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    cargarBarrios();
+    cargarBarrios(); // Carga los barrios disponibles al iniciar
   }
 
+  /// Carga los barrios disponibles desde la base de datos.
   Future<void> cargarBarrios() async {
     final barriosDb = await DatabaseHelper.obtenerBarrios();
     barrios.value = barriosDb;
@@ -30,6 +39,7 @@ class ExportGanadoresController extends GetxController {
     }
   }
 
+  /// Carga los grupos disponibles para un barrio específico.
   Future<void> cargarGrupos(String barrio) async {
     final db = await DatabaseHelper.database;
     final result = await db.rawQuery(
@@ -43,6 +53,7 @@ class ExportGanadoresController extends GetxController {
     }
   }
 
+  /// Maneja el cambio de barrio en el filtro y actualiza los grupos.
   void onBarrioChanged(String? val) async {
     barrioSeleccionado.value = val ?? '';
     grupoSeleccionado.value = '';
@@ -54,10 +65,12 @@ class ExportGanadoresController extends GetxController {
     }
   }
 
+  /// Maneja el cambio de grupo en el filtro.
   void onGrupoChanged(String? val) {
     grupoSeleccionado.value = val ?? '';
   }
 
+  /// Exporta los ganadores filtrados a un archivo Excel con el formato requerido.
   Future<void> exportarExcel(BuildContext context) async {
     if (barrioSeleccionado.value.isEmpty || grupoSeleccionado.value.isEmpty) {
       mensaje.value = 'Seleccioná un barrio y grupo para exportar.';
@@ -72,6 +85,7 @@ class ExportGanadoresController extends GetxController {
       orderBy: 'position ASC',
     );
     if (ganadores.isEmpty) {
+      // ignore: use_build_context_synchronously
       mostrarMensaje(context, 'No hay ganadores registrados para este barrio y grupo.');
       return;
     }
@@ -113,6 +127,7 @@ class ExportGanadoresController extends GetxController {
         horizontalAlign: HorizontalAlign.Center,
       );
     }
+    // ignore: unused_local_variable
     int rowIndex = 9;
     for (var ganador in ganadores) {
       final participante = await db.query(
@@ -149,26 +164,44 @@ class ExportGanadoresController extends GetxController {
     if (savePath == null) return;
     final fileBytes = excel.encode();
     if (fileBytes == null) {
+      // ignore: use_build_context_synchronously
       mostrarMensaje(context, 'Error al generar archivo Excel.');
       return;
     }
     final file = File(savePath);
     await file.writeAsBytes(fileBytes);
+    // ignore: use_build_context_synchronously
     mostrarMensaje(context, 'Archivo exportado correctamente.');
   }
 
+  /// Muestra un mensaje emergente (diálogo) en la pantalla.
   void mostrarMensaje(BuildContext context, String msg) {
+    final focusNode = FocusNode();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Exportación"),
-        content: Text(msg),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Aceptar"),
-          )
-        ],
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) {
+          return RawKeyboardListener(
+            focusNode: focusNode,
+            autofocus: true,
+            onKey: (RawKeyEvent event) {
+              if (event is RawKeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                Navigator.pop(context);
+              }
+            },
+            child: AlertDialog(
+              title: const Text("Exportación"),
+              content: Text(msg),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Aceptar"),
+                )
+              ],
+            ),
+          );
+        },
       ),
     );
   }
