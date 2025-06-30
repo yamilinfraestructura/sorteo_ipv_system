@@ -14,6 +14,21 @@ class ExportGanadoresScreen extends StatelessWidget {
       child: Obx(() => Column(
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.refresh),
+                label: const Text('Recargar barrios y grupos'),
+                onPressed: () => controller.recargarBarriosYGrupos(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueGrey[700],
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
             children: [
               Expanded(
                 child: InputDecorator(

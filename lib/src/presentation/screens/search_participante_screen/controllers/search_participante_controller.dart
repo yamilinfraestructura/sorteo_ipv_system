@@ -20,7 +20,6 @@ class SearchParticipanteController extends GetxController {
   var isLoading = false.obs;
   final TextEditingController numeroController = TextEditingController();
   var ultimoGanadorId = Rxn<int>();
-  BuildContext? rootContext;
 
   @override
   void onInit() {
@@ -224,10 +223,10 @@ class SearchParticipanteController extends GetxController {
   }
 
   void mostrarAlerta(BuildContext context, String titulo, String mensajeAlerta) {
-    final ctx = rootContext ?? context;
+    if (!context.mounted) return;
     final focusNode = FocusNode();
     showDialog(
-      context: ctx,
+      context: context,
       builder: (_) => StatefulBuilder(
         builder: (context, setState) {
           return RawKeyboardListener(

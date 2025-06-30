@@ -8,8 +8,7 @@ class SearchParticipanteScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<SearchParticipanteController>();
-    // Guardar el contexto raíz en el controlador
-    controller.rootContext ??= context;
+    
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Obx(() => Column(

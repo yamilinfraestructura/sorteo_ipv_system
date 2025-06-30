@@ -100,19 +100,40 @@ class ExportGanadoresController extends GetxController {
     final viviendas = p['viviendas'] is int ? p['viviendas'] : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
     final familias = p['familias'] is int ? p['familias'] : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
 
+    // Crear el Excel y renombrar la hoja por defecto a 'Ganadores' si existe
     final excel = Excel.createExcel();
+    String defaultSheet = excel.getDefaultSheet() ?? '';
+    if (defaultSheet.isNotEmpty && defaultSheet != 'Ganadores') {
+      excel.rename(defaultSheet, 'Ganadores');
+    }
+    // Eliminar cualquier otra hoja que no sea 'Ganadores'
+    for (final sheetName in List<String>.from(excel.sheets.keys)) {
+      if (sheetName != 'Ganadores') {
+        excel.delete(sheetName);
+      }
+    }
     final sheet = excel['Ganadores'];
+    // Fila 1 vacía
+    sheet.appendRow([null, null, null, null, null, null]);
+    // Fila 2: Título
     sheet.appendRow([null, TextCellValue('Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025'), null, null, null, null]);
     sheet.merge(CellIndex.indexByString("B2"), CellIndex.indexByString("F2"));
-    sheet.appendRow([]);
+    // Fila 3 vacía
+    sheet.appendRow([null, null, null, null, null, null]);
+    // Fila 4: Grupo
     sheet.appendRow([null, TextCellValue('Grupo: $grupo'), null, null, null, null]);
     sheet.merge(CellIndex.indexByString("B4"), CellIndex.indexByString("F4"));
+    // Fila 5: Viviendas y Familias
     sheet.appendRow([null, TextCellValue('$viviendas Viviendas, $familias Familias'), null, null, null, null]);
     sheet.merge(CellIndex.indexByString("B5"), CellIndex.indexByString("F5"));
+    // Fila 6: Barrio
     sheet.appendRow([null, TextCellValue('Barrio: $barrio'), null, null, null, null]);
     sheet.merge(CellIndex.indexByString("B6"), CellIndex.indexByString("F6"));
-    sheet.appendRow([]);
-    sheet.appendRow([]);
+    // Fila 7 vacía
+    sheet.appendRow([null, null, null, null, null, null]);
+    // Fila 8 vacía
+    sheet.appendRow([null, null, null, null, null, null]);
+    // Fila 9: Encabezados
     sheet.appendRow([
       null,
       TextCellValue('Posición'),
@@ -121,14 +142,13 @@ class ExportGanadoresController extends GetxController {
       TextCellValue('Apellido Nombre'),
     ]);
     for (var col = 1; col <= 4; col++) {
-      final headerCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 8));
+      final headerCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 9));
       headerCell.cellStyle = CellStyle(
         bold: true,
         horizontalAlign: HorizontalAlign.Center,
       );
     }
-    // ignore: unused_local_variable
-    int rowIndex = 9;
+    // Los datos deben empezar en la fila 10
     for (var ganador in ganadores) {
       final participante = await db.query(
         'participantes',
@@ -137,14 +157,20 @@ class ExportGanadoresController extends GetxController {
       );
       if (participante.isNotEmpty) {
         final p = participante.first;
-        sheet.appendRow([
-          null,
-          IntCellValue(ganador['position'] as int),
-          IntCellValue(p['order_number'] as int),
-          TextCellValue(p['document'].toString()),
-          TextCellValue(p['full_name'].toString()),
-        ]);
-        rowIndex++;
+        final pos = ganador['position'];
+        final order = p['order_number'];
+        final doc = p['document']?.toString().trim() ?? '';
+        final nombre = p['full_name']?.toString().trim() ?? '';
+        // Filtro: solo agregar si todos los campos clave son válidos
+        if (pos != null && pos != 0 && order != null && order != 0 && doc.isNotEmpty && nombre.isNotEmpty) {
+          sheet.appendRow([
+            null,
+            IntCellValue(pos as int),
+            IntCellValue(order as int),
+            TextCellValue(doc),
+            TextCellValue(nombre),
+          ]);
+        }
       }
     }
     for (var col = 1; col <= 4; col++) {
@@ -204,5 +230,13 @@ class ExportGanadoresController extends GetxController {
         },
       ),
     );
+  }
+
+  /// Método público para recargar barrios y grupos desde la UI si es necesario
+  Future<void> recargarBarriosYGrupos() async {
+    await cargarBarrios();
+    if (barrioSeleccionado.value.isNotEmpty) {
+      await cargarGrupos(barrioSeleccionado.value);
+    }
   }
 }
