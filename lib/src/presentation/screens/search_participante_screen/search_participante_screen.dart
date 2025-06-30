@@ -8,6 +8,8 @@ class SearchParticipanteScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<SearchParticipanteController>();
+    // Guardar el contexto raíz en el controlador
+    controller.rootContext ??= context;
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Obx(() => Column(
@@ -108,10 +110,31 @@ class SearchParticipanteScreen extends StatelessWidget {
                       itemCount: controller.ganadoresRecientes.length,
                       itemBuilder: (context, index) {
                         final g = controller.ganadoresRecientes[index];
-                        return ListTile(
-                          title: Text('${g['full_name']} | Número de SORTEO: \\ ${g['order_number']}' ?? ''),
-                          subtitle: Text('POSICIÓN: \\ ${g['position']} | DNI: \\${g['document']} | Barrio: \\${g['neighborhood']} | Grupo: \\${g['group']}'),
-                          trailing: Text('Fecha: \\${g['fecha']}'),
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 800),
+                          curve: Curves.easeInOut,
+                          decoration: BoxDecoration(
+                            color: (controller.ultimoGanadorId.value != null && g['id'] == controller.ultimoGanadorId.value)
+                                ? Colors.greenAccent.withOpacity(0.4)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ListTile(
+                            title: Text('${g['full_name']} | Número de SORTEO: \\ ${g['order_number']}' ?? '', style: TextStyle(fontWeight: FontWeight.w500)),
+                            subtitle: Text('POSICIÓN: \\ ${g['position']} | DNI: \\${g['document']} | Barrio: \\${g['neighborhood']} | Grupo: \\${g['group']}'),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Fecha: \\${g['fecha']}'),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  tooltip: 'Eliminar ganador',
+                                  onPressed: () => controller.eliminarGanador(context, g),
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       },
                     ),

@@ -100,4 +100,9 @@ class DatabaseHelper {
       print('Columna: ${column['name']}, Tipo: ${column['type']}');
     }
   }
+
+  static Future<void> eliminarGanadorPorId(int id) async {
+    final db = await database;
+    await db.delete('ganadores', where: 'id = ?', whereArgs: [id]);
+  }
 }

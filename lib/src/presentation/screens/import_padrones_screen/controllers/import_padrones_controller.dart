@@ -68,7 +68,7 @@ class ImportPadronesController extends GetxController {
     if (grupoSeleccionado.value != 'Seleccionar') {
       await cargarParticipantesBarrioGrupo(barrioSeleccionado.value, grupoSeleccionado.value);
     } else {
-      participantesFiltrados.clear();
+      participantesFiltrados.value = <Map<String, dynamic>>[];
     }
   }
 
@@ -85,24 +85,6 @@ class ImportPadronesController extends GetxController {
 
   /// Maneja el cambio de barrio en el filtro y actualiza los grupos y participantes.
   void onBarrioChanged(String? val, [BuildContext? context]) async {
-    if (val == 'Seleccionar') {
-      if (grupoSeleccionado.value != 'Seleccionar') {
-        if (context != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Primero deselecciona el grupo antes de cambiar el barrio.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-      barrioSeleccionado.value = 'Seleccionar';
-      grupos.value = ['Seleccionar'];
-      grupoSeleccionado.value = 'Seleccionar';
-      participantesFiltrados.value = <Map<String, dynamic>>[];
-      return;
-    }
     barrioSeleccionado.value = val ?? 'Seleccionar';
     grupoSeleccionado.value = 'Seleccionar';
     if (val != null && val != 'Seleccionar') {

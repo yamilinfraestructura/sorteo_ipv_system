@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 import 'package:flutter/services.dart';
+import 'package:pinput/pinput.dart';
 
 class SearchParticipanteController extends GetxController {
   var barrios = <String>['Seleccionar'].obs;
@@ -18,6 +19,8 @@ class SearchParticipanteController extends GetxController {
   var ganadoresRecientes = <Map<String, dynamic>>[].obs;
   var isLoading = false.obs;
   final TextEditingController numeroController = TextEditingController();
+  var ultimoGanadorId = Rxn<int>();
+  BuildContext? rootContext;
 
   @override
   void onInit() {
@@ -151,9 +154,21 @@ class SearchParticipanteController extends GetxController {
 
   void onBarrioChanged(String? val) async {
     barrioSeleccionado.value = val ?? 'Seleccionar';
+    grupoSeleccionado.value = 'Seleccionar';
     participante.value = null;
     mensaje.value = '';
     numeroController.clear();
+    if (barrioSeleccionado.value != 'Seleccionar') {
+      final db = await DatabaseHelper.database;
+      final result = await db.rawQuery(
+        'SELECT DISTINCT "group" FROM participantes WHERE neighborhood = ?',
+        [barrioSeleccionado.value],
+      );
+      final gruposDb = result.map((e) => e['group'] as String).toList();
+      grupos.value = ['Seleccionar', ...gruposDb];
+    } else {
+      grupos.value = ['Seleccionar'];
+    }
     await cargarGanadoresRecientes();
     await cargarInfoGrupo();
   }
@@ -209,9 +224,10 @@ class SearchParticipanteController extends GetxController {
   }
 
   void mostrarAlerta(BuildContext context, String titulo, String mensajeAlerta) {
+    final ctx = rootContext ?? context;
     final focusNode = FocusNode();
     showDialog(
-      context: context,
+      context: ctx,
       builder: (_) => StatefulBuilder(
         builder: (context, setState) {
           return RawKeyboardListener(
@@ -223,16 +239,57 @@ class SearchParticipanteController extends GetxController {
                 Navigator.pop(context);
               }
             },
-            child: AlertDialog(
-              title: Text(titulo, style: TextStyle(fontWeight: FontWeight.bold, fontSize: ResponsiveConfig.subtitleSize)),
-              content: Text(mensajeAlerta),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Aceptar"),
-                )
-              ],
-            ),
+            child: titulo == "Sorteo completo"
+                ? AlertDialog(
+                    backgroundColor: Colors.amber[50],
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    title: Column(
+                      children: [
+                        Icon(Icons.emoji_events, color: Colors.amber[800], size: 60),
+                        const SizedBox(height: 10),
+                        Text(
+                          titulo,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 28,
+                            color: Colors.amber[900],
+                            letterSpacing: 1.2,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                    content: Text(
+                      mensajeAlerta,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                      textAlign: TextAlign.center,
+                    ),
+                    actionsAlignment: MainAxisAlignment.center,
+                    actions: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber[700],
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text("Aceptar"),
+                      ),
+                    ],
+                  )
+                : AlertDialog(
+                    title: Text(titulo, style: TextStyle(fontWeight: FontWeight.bold, fontSize: ResponsiveConfig.subtitleSize)),
+                    content: Text(mensajeAlerta),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Aceptar"),
+                      )
+                    ],
+                  ),
           );
         },
       ),
@@ -289,6 +346,35 @@ class SearchParticipanteController extends GetxController {
   Future<void> registrarGanador(BuildContext context) async {
     if (participante.value == null) return;
     final db = await DatabaseHelper.database;
+    // Verificar cantidad de ganadores y viviendas
+    final countResult = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
+      [participante.value!['neighborhood'], participante.value!['group']]
+    );
+    final countGanadores = countResult.first['count'] is int
+        ? countResult.first['count'] as int
+        : int.tryParse(countResult.first['count']?.toString() ?? '0') ?? 0;
+    // Obtener cantidad de viviendas
+    final infoResult = await db.query(
+      'participantes',
+      columns: ['viviendas'],
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [participante.value!['neighborhood'], participante.value!['group']],
+      limit: 1,
+    );
+    int viviendas = 0;
+    if (infoResult.isNotEmpty) {
+      final v = infoResult.first['viviendas'];
+      viviendas = v is int ? v : int.tryParse(v?.toString() ?? '0') ?? 0;
+    }
+    // Si ya se llegó al límite de ganadores
+    if (countGanadores >= viviendas && viviendas > 0) {
+      mostrarAlerta(context, "Sorteo completo", "Se completó el sorteo del Barrio '${participante.value!['neighborhood']}' Grupo '${participante.value!['group']}' con $viviendas Viviendas.");
+      participante.value = null;
+      mensaje.value = '';
+      return;
+    }
+    // Verificar si el participante ya es ganador
     final yaGanador = await db.query(
       'ganadores',
       where: 'order_number = ? AND neighborhood = ? AND "group" = ?',
@@ -298,12 +384,27 @@ class SearchParticipanteController extends GetxController {
       mensaje.value = 'Este participante ya fue registrado como ganador.';
       return;
     }
-    final countResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
-      [participante.value!['neighborhood'], participante.value!['group']]
+    // Obtener todas las posiciones ocupadas
+    final posicionesResult = await db.query(
+      'ganadores',
+      columns: ['position'],
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [participante.value!['neighborhood'], participante.value!['group']],
+      orderBy: 'position ASC',
     );
-    final countGanadores = countResult.first['count'] as int? ?? 0;
-    final nuevaPosicion = countGanadores + 1;
+    // Buscar el menor hueco disponible
+    int nuevaPosicion = 1;
+    final posicionesOcupadas = posicionesResult.map((e) => e['position'] as int).toList()..sort();
+    for (int i = 1; i <= posicionesOcupadas.length; i++) {
+      if (!posicionesOcupadas.contains(i)) {
+        nuevaPosicion = i;
+        break;
+      }
+      // Si no hay huecos, asignar la siguiente
+      if (i == posicionesOcupadas.length) {
+        nuevaPosicion = i + 1;
+      }
+    }
     await db.insert('ganadores', {
       'participanteId': participante.value!['id'],
       'fecha': DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
@@ -314,10 +415,135 @@ class SearchParticipanteController extends GetxController {
       'document': participante.value!['document'],
       'full_name': participante.value!['full_name'],
     });
+    // Obtener el id del último ganador insertado
+    final idResult = await db.rawQuery('SELECT last_insert_rowid() as id');
+    if (idResult.isNotEmpty) {
+      ultimoGanadorId.value = idResult.first['id'] as int?;
+    } else {
+      ultimoGanadorId.value = null;
+    }
     mensaje.value = 'Ganador registrado correctamente.';
     numeroController.clear();
     participante.value = null;
     await cargarGanadoresRecientes();
     await cargarInfoGrupo();
+    // Mostrar alert de cierre si se completó el sorteo justo ahora
+    if (nuevaPosicion == viviendas && viviendas > 0) {
+      mostrarAlerta(context, "Sorteo completo", "Se completó el sorteo del Barrio '${barrioSeleccionado.value}' Grupo '${grupoSeleccionado.value}' con $viviendas Viviendas.");
+    }
+  }
+
+  Future<void> eliminarGanador(BuildContext context, Map<String, dynamic> ganador) async {
+    final TextEditingController pinController = TextEditingController();
+    bool eliminado = false;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final focusNode = FocusNode();
+        String errorPin = '';
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return RawKeyboardListener(
+              focusNode: focusNode,
+              autofocus: true,
+              onKey: (RawKeyEvent event) {
+                if (event is RawKeyDownEvent &&
+                    (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                  if (pinController.text == '123456') {
+                    eliminado = true;
+                    Navigator.pop(context);
+                  } else {
+                    setState(() => errorPin = 'Pin incorrecto');
+                  }
+                }
+              },
+              child: AlertDialog(
+                title: const Text('Eliminar ganador'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('¿Estás seguro que deseas eliminar a este ganador?'),
+                    const SizedBox(height: 12),
+                    Text('Nombre: ' + (ganador['full_name'] ?? '')), 
+                    Text('DNI: ' + (ganador['document'] ?? '')), 
+                    const SizedBox(height: 16),
+                    const Text('Ingresá el pin de 6 dígitos para confirmar:'),
+                    SizedBox(
+                      width: 220,
+                      child: Pinput(
+                        length: 6,
+                        controller: pinController,
+                        obscureText: true,
+                        autofocus: true,
+                        defaultPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[100],
+                            border: Border.all(color: Colors.orange, width: 2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        focusedPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[200],
+                            border: Border.all(color: Colors.deepOrange, width: 2.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        submittedPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[300],
+                            border: Border.all(color: Colors.deepOrange, width: 2.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        // No eliminar al completar el pin, solo con botón o enter
+                        onCompleted: (_) {},
+                      ),
+                    ),
+                    if (errorPin.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(errorPin, style: const TextStyle(color: Colors.red)),
+                      ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      if (pinController.text == '123456') {
+                        eliminado = true;
+                        Navigator.pop(context);
+                      } else {
+                        setState(() => errorPin = 'Pin incorrecto');
+                      }
+                    },
+                    child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    if (eliminado) {
+      await DatabaseHelper.eliminarGanadorPorId(ganador['id'] as int);
+      await cargarGanadoresRecientes();
+      mensaje.value = 'Ganador eliminado correctamente.';
+    }
   }
 }
