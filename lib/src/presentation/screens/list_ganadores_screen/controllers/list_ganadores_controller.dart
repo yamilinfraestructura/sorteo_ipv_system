@@ -15,20 +15,29 @@ class ListGanadoresController extends GetxController {
   var grupoSeleccionado = 'Todos'.obs;
   // Estado de carga para mostrar spinners
   var isLoading = false.obs;
+  // Estado de cierre del sorteo para el filtro actual
+  var sorteoCerrado = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    cargarFiltros();    // Carga los filtros de barrios y grupos al iniciar
-    cargarGanadores();  // Carga la lista de ganadores al iniciar
+    cargarFiltros(); // Carga los filtros de barrios y grupos al iniciar
+    cargarGanadores(); // Carga la lista de ganadores al iniciar
   }
 
   /// Carga los barrios y grupos disponibles desde la base de datos para los filtros.
   Future<void> cargarFiltros() async {
     final db = await DatabaseHelper.database;
-    final barriosDb = await db.rawQuery('SELECT DISTINCT neighborhood FROM ganadores');
-    final gruposDb = await db.rawQuery('SELECT DISTINCT "group" FROM ganadores');
-    barrios.value = ['Todos', ...barriosDb.map((e) => e['neighborhood'] as String)];
+    final barriosDb = await db.rawQuery(
+      'SELECT DISTINCT neighborhood FROM ganadores',
+    );
+    final gruposDb = await db.rawQuery(
+      'SELECT DISTINCT "group" FROM ganadores',
+    );
+    barrios.value = [
+      'Todos',
+      ...barriosDb.map((e) => e['neighborhood'] as String),
+    ];
     grupos.value = ['Todos', ...gruposDb.map((e) => e['group'] as String)];
     if (!barrios.contains(barrioSeleccionado.value)) {
       barrioSeleccionado.value = 'Todos';
@@ -75,6 +84,22 @@ class ListGanadoresController extends GetxController {
       }
     }
     ganadores.value = lista;
+
+    // Lógica para saber si el sorteo está cerrado
+    if (barrioSeleccionado.value != 'Todos' &&
+        grupoSeleccionado.value != 'Todos') {
+      // Contar participantes para el barrio y grupo
+      final participantes = await db.query(
+        'participantes',
+        where: 'neighborhood = ? AND "group" = ?',
+        whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+      );
+      final totalGanadores = lista.length;
+      sorteoCerrado.value =
+          participantes.length > 0 && totalGanadores == participantes.length;
+    } else {
+      sorteoCerrado.value = false;
+    }
     isLoading.value = false;
   }
 

@@ -1,5 +1,7 @@
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class DatabaseHelper {
   static Database? _db;
@@ -26,7 +28,8 @@ class DatabaseHelper {
               "group" TEXT,
               neighborhood TEXT,
               viviendas INTEGER,
-              familias INTEGER
+              familias INTEGER,
+              id_user INTEGER
             )
           ''');
 
@@ -40,19 +43,119 @@ class DatabaseHelper {
               position INTEGER,
               order_number INTEGER,
               document TEXT,
-              full_name TEXT
+              full_name TEXT,
+              id_user INTEGER
             )
           ''');
+
+          await db.execute('''
+            CREATE TABLE usuarios (
+              id_user INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_name TEXT NOT NULL UNIQUE,
+              password TEXT NOT NULL,
+              perfil_user TEXT,
+              email_user TEXT
+            )
+          ''');
+
+          await db.execute('''
+            CREATE TABLE eliminados (
+              id_eliminado INTEGER PRIMARY KEY AUTOINCREMENT,
+              ganador_id INTEGER,
+              neighborhood TEXT,
+              "group" TEXT,
+              position INTEGER,
+              order_number INTEGER,
+              document TEXT,
+              full_name TEXT,
+              fecha_baja TEXT DEFAULT '1900-01-01 00:00:00',
+              id_user INTEGER,
+              FOREIGN KEY (id_user) REFERENCES usuarios(id_user)
+            )
+          ''');
+
+          // Insertar usuario por defecto con password encriptado
+          final password = '654321';
+          final passwordHash = sha256.convert(utf8.encode(password)).toString();
+          await db.insert('usuarios', {
+            'user_name': 'Yamil Saad',
+            'password': passwordHash,
+            'perfil_user': 'Desarrollador',
+            'email_user': 'yamilsaad00@gmail.com',
+          });
         },
         onUpgrade: (db, oldVersion, newVersion) async {
-          // Si la tabla participantes no tiene viviendas/familias, las agregamos
-          final columns = await db.rawQuery('PRAGMA table_info(participantes)');
-          final colNames = columns.map((c) => c['name']).toSet();
-          if (!colNames.contains('viviendas')) {
-            await db.execute('ALTER TABLE participantes ADD COLUMN viviendas INTEGER;');
+          // Agregar columnas id_user si no existen
+          final participantesCols = await db.rawQuery(
+            'PRAGMA table_info(participantes)',
+          );
+          final ganadoresCols = await db.rawQuery(
+            'PRAGMA table_info(ganadores)',
+          );
+          final participantesColNames =
+              participantesCols.map((c) => c['name']).toSet();
+          final ganadoresColNames = ganadoresCols.map((c) => c['name']).toSet();
+          if (!participantesColNames.contains('viviendas')) {
+            await db.execute(
+              'ALTER TABLE participantes ADD COLUMN viviendas INTEGER;',
+            );
           }
-          if (!colNames.contains('familias')) {
-            await db.execute('ALTER TABLE participantes ADD COLUMN familias INTEGER;');
+          if (!participantesColNames.contains('familias')) {
+            await db.execute(
+              'ALTER TABLE participantes ADD COLUMN familias INTEGER;',
+            );
+          }
+          if (!participantesColNames.contains('id_user')) {
+            await db.execute(
+              'ALTER TABLE participantes ADD COLUMN id_user INTEGER;',
+            );
+          }
+          if (!ganadoresColNames.contains('id_user')) {
+            await db.execute(
+              'ALTER TABLE ganadores ADD COLUMN id_user INTEGER;',
+            );
+          }
+
+          // Crear tabla usuarios si no existe
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+              id_user INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_name TEXT NOT NULL UNIQUE,
+              password TEXT NOT NULL,
+              perfil_user TEXT,
+              email_user TEXT
+            )
+          ''');
+
+          // Crear tabla eliminados si no existe
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS eliminados (
+              id_eliminado INTEGER PRIMARY KEY AUTOINCREMENT,
+              ganador_id INTEGER,
+              neighborhood TEXT,
+              "group" TEXT,
+              position INTEGER,
+              order_number INTEGER,
+              document TEXT,
+              full_name TEXT,
+              fecha_baja TEXT DEFAULT '1900-01-01 00:00:00',
+              id_user INTEGER,
+              FOREIGN KEY (id_user) REFERENCES usuarios(id_user)
+            )
+          ''');
+
+          // Insertar usuario por defecto si la tabla está vacía
+          final usuarios = await db.query('usuarios');
+          if (usuarios.isEmpty) {
+            final password = '654321';
+            final passwordHash =
+                sha256.convert(utf8.encode(password)).toString();
+            await db.insert('usuarios', {
+              'user_name': 'Yamil Saad',
+              'password': passwordHash,
+              'perfil_user': 'Desarrollador',
+              'email_user': 'yamilsaad00@gmail.com',
+            });
           }
         },
       ),
@@ -66,7 +169,9 @@ class DatabaseHelper {
     await db.insert('participantes', data);
   }
 
-  static Future<void> insertarParticipantesLote(List<Map<String, dynamic>> lista) async {
+  static Future<void> insertarParticipantesLote(
+    List<Map<String, dynamic>> lista,
+  ) async {
     final db = await database;
     final batch = db.batch();
     for (var item in lista) {
@@ -78,7 +183,9 @@ class DatabaseHelper {
   static Future<List<String>> obtenerBarrios() async {
     final db = await database;
     try {
-      final result = await db.rawQuery('SELECT DISTINCT neighborhood FROM participantes');
+      final result = await db.rawQuery(
+        'SELECT DISTINCT neighborhood FROM participantes',
+      );
       return result.map((e) => e['neighborhood'] as String).toList();
     } catch (e) {
       print('Error al obtener barrios: $e');

@@ -11,71 +11,106 @@ class ListGanadoresScreen extends StatelessWidget {
     final controller = Get.find<ListGanadoresController>();
     return Padding(
       padding: const EdgeInsets.all(32.0),
-      child: Obx(() => Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Barrio',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: controller.barrioSeleccionado.value,
-                      isExpanded: true,
-                      items: controller.barrios
-                          .map((barrio) => DropdownMenuItem(
-                                value: barrio,
-                                child: Text(barrio),
-                              ))
-                          .toList(),
-                      onChanged: controller.onBarrioChanged,
+      child: Obx(
+        () => Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Barrio',
+                      border: OutlineInputBorder(),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: controller.barrioSeleccionado.value,
+                        isExpanded: true,
+                        items:
+                            controller.barrios
+                                .map(
+                                  (barrio) => DropdownMenuItem(
+                                    value: barrio,
+                                    child: Text(barrio),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: controller.onBarrioChanged,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Grupo',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: controller.grupoSeleccionado.value,
-                      isExpanded: true,
-                      items: controller.grupos
-                          .map((grupo) => DropdownMenuItem(
-                                value: grupo,
-                                child: Text(grupo),
-                              ))
-                          .toList(),
-                      onChanged: controller.onGrupoChanged,
+                const SizedBox(width: 20),
+                Expanded(
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Grupo',
+                      border: OutlineInputBorder(),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: controller.grupoSeleccionado.value,
+                        isExpanded: true,
+                        items:
+                            controller.grupos
+                                .map(
+                                  (grupo) => DropdownMenuItem(
+                                    value: grupo,
+                                    child: Text(grupo),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: controller.onGrupoChanged,
+                      ),
                     ),
                   ),
                 ),
+                const SizedBox(width: 20),
+                ElevatedButton.icon(
+                  onPressed: controller.actualizarLista,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text("Actualizar"),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Mostrar mensaje si el sorteo está cerrado
+            if (controller.sorteoCerrado.value)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green, width: 2),
+                ),
+                child: const Text(
+                  '¡El sorteo de este barrio y grupo ya está CERRADO!',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              const SizedBox(width: 20),
-              ElevatedButton.icon(
-                onPressed: controller.actualizarLista,
-                icon: const Icon(Icons.refresh),
-                label: const Text("Actualizar"),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: controller.isLoading.value
-                ? const Center(child: CircularProgressIndicator())
-                : controller.ganadores.isEmpty
-                    ? const Center(child: Text("No hay ganadores registrados."))
-                    : GanadoresListComponent(ganadores: controller.ganadores),
-          ),
-        ],
-      )),
+            Expanded(
+              child:
+                  controller.isLoading.value
+                      ? const Center(child: CircularProgressIndicator())
+                      : controller.ganadores.isEmpty
+                      ? const Center(
+                        child: Text("No hay ganadores registrados."),
+                      )
+                      : GanadoresListComponent(
+                        ganadores: controller.ganadores,
+                        sorteoCerrado: controller.sorteoCerrado.value,
+                      ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

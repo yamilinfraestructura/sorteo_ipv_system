@@ -1,34 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
-import 'login_controller.dart';
+import 'register_controller.dart';
 
-class LoginScreen extends StatelessWidget {
-  LoginScreen({super.key});
-
-  final LoginController controller = Get.put(LoginController());
+class RegisterScreen extends StatelessWidget {
+  const RegisterScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final RegisterController controller = Get.put(RegisterController());
     return Scaffold(
-      backgroundColor: Colors.white,
+      appBar: AppBar(title: const Text('Registro de Usuario')),
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Obx(
-              () => Column(
+            child: Obx(() {
+              if (!controller.puedeRegistrar) {
+                return const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(height: 40),
+                    Icon(Icons.lock_outline, size: 80, color: Colors.red),
+                    SizedBox(height: 24),
+                    Text(
+                      'No tienes permisos para registrar nuevos usuarios.',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                );
+              }
+              return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 40),
                   Icon(
-                    Icons.verified_user,
+                    Icons.person_add,
                     size: 80,
                     color: Colors.orange.shade700,
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'Iniciar Sesión',
+                    'Registrar Usuario',
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 32),
@@ -41,15 +59,18 @@ class LoginScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       prefixIcon: const Icon(Icons.email),
-                      errorText:
-                          controller.errorMessage.value.contains('Correo')
-                              ? controller.errorMessage.value
-                              : null,
                     ),
-                    onChanged: (_) {
-                      if (controller.errorMessage.value.isNotEmpty)
-                        controller.errorMessage.value = '';
-                    },
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: controller.userNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre de usuario',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(Icons.person),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Pinput(
@@ -70,18 +91,46 @@ class LoginScreen extends StatelessWidget {
                         border: Border.all(color: Colors.orange.shade200),
                       ),
                     ),
-                    onChanged: (_) {
-                      if (controller.errorMessage.value.isNotEmpty)
-                        controller.errorMessage.value = '';
-                    },
                   ),
-                  const SizedBox(height: 16),
-                  if (controller.errorMessage.value.isNotEmpty &&
-                      !controller.errorMessage.value.contains('Correo'))
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    value:
+                        controller.perfilController.value.isEmpty
+                            ? null
+                            : controller.perfilController.value,
+                    items:
+                        controller.perfiles
+                            .map(
+                              (perfil) => DropdownMenuItem(
+                                value: perfil,
+                                child: Text(perfil),
+                              ),
+                            )
+                            .toList(),
+                    onChanged:
+                        (val) => controller.perfilController.value = val ?? '',
+                    decoration: InputDecoration(
+                      labelText: 'Perfil de usuario',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(Icons.security),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  if (controller.errorMessage.value.isNotEmpty)
                     Text(
                       controller.errorMessage.value,
                       style: const TextStyle(
                         color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  if (controller.successMessage.value.isNotEmpty)
+                    Text(
+                      controller.successMessage.value,
+                      style: const TextStyle(
+                        color: Colors.green,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -91,7 +140,7 @@ class LoginScreen extends StatelessWidget {
                       : SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: controller.login,
+                          onPressed: controller.registrar,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.orange.shade700,
                             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -100,25 +149,15 @@ class LoginScreen extends StatelessWidget {
                             ),
                           ),
                           child: const Text(
-                            'Ingresar',
+                            'Registrar',
                             style: TextStyle(fontSize: 18),
                           ),
                         ),
                       ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () async {
-                      final user = await controller.autorizarParaRegistro();
-                      if (user != null) {
-                        Get.toNamed('/register', arguments: user);
-                      }
-                    },
-                    child: const Text('¿No tienes cuenta? Registrate'),
-                  ),
                   const SizedBox(height: 40),
                 ],
-              ),
-            ),
+              );
+            }),
           ),
         ),
       ),

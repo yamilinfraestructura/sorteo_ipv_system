@@ -3,8 +3,9 @@ import 'package:get/get.dart';
 
 ///Importación de archivos
 import 'package:sorteo_ipv_system/src/config/bindings/app_binding.dart';
+import 'package:sorteo_ipv_system/src/config/router/app_router.dart';
 import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
-import 'package:sorteo_ipv_system/src/presentation/pages/home_page.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -28,7 +29,8 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'Material App',
       initialBinding: AppBinding(), // 👈 se aplica aquí
-      home: ResponsiveInit(child: HomePage()),
+      initialRoute: AppRouter.initialRoute,
+      getPages: AppRouter.routes,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),

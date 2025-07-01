@@ -20,6 +20,7 @@ class SearchParticipanteController extends GetxController {
   var isLoading = false.obs;
   final TextEditingController numeroController = TextEditingController();
   var ultimoGanadorId = Rxn<int>();
+  var sorteoCerrado = false.obs;
 
   @override
   void onInit() {
@@ -51,7 +52,9 @@ class SearchParticipanteController extends GetxController {
 
   Future<void> cargarGrupos() async {
     final db = await DatabaseHelper.database;
-    final result = await db.rawQuery('SELECT DISTINCT "group" FROM participantes');
+    final result = await db.rawQuery(
+      'SELECT DISTINCT "group" FROM participantes',
+    );
     final gruposDb = result.map((e) => e['group'] as String).toList();
     grupos.value = ['Seleccionar', ...gruposDb];
     if (grupos.length > 1 && !grupos.contains(grupoSeleccionado.value)) {
@@ -64,7 +67,10 @@ class SearchParticipanteController extends GetxController {
     String? barrio = barrioSeleccionado.value;
     String? grupo = grupoSeleccionado.value;
     List<Map<String, dynamic>> resultado;
-    if (barrio != null && barrio != 'Seleccionar' && grupo != null && grupo != 'Seleccionar') {
+    if (barrio != null &&
+        barrio != 'Seleccionar' &&
+        grupo != null &&
+        grupo != 'Seleccionar') {
       resultado = await db.query(
         'ganadores',
         where: 'neighborhood = ? AND "group" = ?',
@@ -89,11 +95,7 @@ class SearchParticipanteController extends GetxController {
         limit: 10,
       );
     } else {
-      resultado = await db.query(
-        'ganadores',
-        orderBy: 'fecha DESC',
-        limit: 10,
-      );
+      resultado = await db.query('ganadores', orderBy: 'fecha DESC', limit: 10);
     }
     final List<Map<String, dynamic>> lista = [];
     for (var item in resultado) {
@@ -111,10 +113,44 @@ class SearchParticipanteController extends GetxController {
       }
     }
     ganadoresRecientes.value = lista;
+
+    // Lógica para saber si el sorteo está cerrado (usando viviendas)
+    if (barrio != null &&
+        barrio != 'Seleccionar' &&
+        grupo != null &&
+        grupo != 'Seleccionar') {
+      // Contar todos los ganadores
+      final countResult = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
+        [barrio, grupo],
+      );
+      final totalGanadores =
+          countResult.first['count'] is int
+              ? countResult.first['count'] as int
+              : int.tryParse(countResult.first['count']?.toString() ?? '0') ??
+                  0;
+      // Obtener cantidad de viviendas
+      final infoResult = await db.query(
+        'participantes',
+        columns: ['viviendas'],
+        where: 'neighborhood = ? AND "group" = ?',
+        whereArgs: [barrio, grupo],
+        limit: 1,
+      );
+      int viviendas = 0;
+      if (infoResult.isNotEmpty) {
+        final v = infoResult.first['viviendas'];
+        viviendas = v is int ? v : int.tryParse(v?.toString() ?? '0') ?? 0;
+      }
+      sorteoCerrado.value = viviendas > 0 && totalGanadores == viviendas;
+    } else {
+      sorteoCerrado.value = false;
+    }
   }
 
   Future<void> cargarInfoGrupo() async {
-    if (barrioSeleccionado.value == 'Seleccionar' || grupoSeleccionado.value == 'Seleccionar') {
+    if (barrioSeleccionado.value == 'Seleccionar' ||
+        grupoSeleccionado.value == 'Seleccionar') {
       viviendasGrupo.value = 0;
       familiasGrupo.value = 0;
       ultimaPosicion.value = 0;
@@ -142,9 +178,10 @@ class SearchParticipanteController extends GetxController {
     );
     int ultimaPos = 0;
     if (posResult.isNotEmpty) {
-      ultimaPos = posResult.first['maxPos'] is int
-        ? posResult.first['maxPos'] as int
-        : int.tryParse(posResult.first['maxPos']?.toString() ?? '0') ?? 0;
+      ultimaPos =
+          posResult.first['maxPos'] is int
+              ? posResult.first['maxPos'] as int
+              : int.tryParse(posResult.first['maxPos']?.toString() ?? '0') ?? 0;
     }
     viviendasGrupo.value = viviendas;
     familiasGrupo.value = familias;
@@ -182,14 +219,19 @@ class SearchParticipanteController extends GetxController {
   }
 
   Future<void> buscarParticipante(BuildContext context) async {
-    if (barrioSeleccionado.value == 'Seleccionar' || grupoSeleccionado.value == 'Seleccionar') {
+    if (barrioSeleccionado.value == 'Seleccionar' ||
+        grupoSeleccionado.value == 'Seleccionar') {
       mensaje.value = "Seleccioná un barrio y grupo primero.";
       return;
     }
     final numero = int.tryParse(numeroController.text);
     if (numero == null) {
       mensaje.value = "Número inválido.";
-      mostrarAlerta(context, "Número inválido", "Por favor, ingresa un número de orden válido.");
+      mostrarAlerta(
+        context,
+        "Número inválido",
+        "Por favor, ingresa un número de orden válido.",
+      );
       return;
     }
     final db = await DatabaseHelper.database;
@@ -207,7 +249,11 @@ class SearchParticipanteController extends GetxController {
       );
       if (yaGanador.isNotEmpty) {
         final pos = yaGanador.first['position'] ?? '-';
-        mostrarAlerta(context, "Ya registrado", "Este participante ya ha sido registrado como ganador. Posición Número $pos");
+        mostrarAlerta(
+          context,
+          "Ya registrado",
+          "Este participante ya ha sido registrado como ganador. Posición Número $pos",
+        );
         participante.value = null;
         mensaje.value = '';
         return;
@@ -217,128 +263,190 @@ class SearchParticipanteController extends GetxController {
       mensaje.value = '';
     } else {
       participante.value = null;
-      mensaje.value = "No se encontró participante con ese Nro de Orden en el barrio y grupo seleccionados.";
-      mostrarAlerta(context, "No encontrado", "No se encontró participante con ese Nro de Orden en el barrio y grupo seleccionados.");
+      mensaje.value =
+          "No se encontró participante con ese Nro de Orden en el barrio y grupo seleccionados.";
+      mostrarAlerta(
+        context,
+        "No encontrado",
+        "No se encontró participante con ese Nro de Orden en el barrio y grupo seleccionados.",
+      );
     }
   }
 
-  void mostrarAlerta(BuildContext context, String titulo, String mensajeAlerta) {
+  void mostrarAlerta(
+    BuildContext context,
+    String titulo,
+    String mensajeAlerta,
+  ) {
     if (!context.mounted) return;
     final focusNode = FocusNode();
     showDialog(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) {
-          return RawKeyboardListener(
-            focusNode: focusNode,
-            autofocus: true,
-            onKey: (RawKeyEvent event) {
-              if (event is RawKeyDownEvent &&
-                  (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                Navigator.pop(context);
-              }
-            },
-            child: titulo == "Sorteo completo"
-                ? AlertDialog(
-                    backgroundColor: Colors.amber[50],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    title: Column(
-                      children: [
-                        Icon(Icons.emoji_events, color: Colors.amber[800], size: 60),
-                        const SizedBox(height: 10),
-                        Text(
-                          titulo,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 28,
-                            color: Colors.amber[900],
-                            letterSpacing: 1.2,
+      builder:
+          (_) => StatefulBuilder(
+            builder: (context, setState) {
+              return RawKeyboardListener(
+                focusNode: focusNode,
+                autofocus: true,
+                onKey: (RawKeyEvent event) {
+                  if (event is RawKeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.enter ||
+                          event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                    Navigator.pop(context);
+                  }
+                },
+                child:
+                    titulo == "Sorteo completo"
+                        ? AlertDialog(
+                          backgroundColor: Colors.amber[50],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          textAlign: TextAlign.center,
+                          title: Column(
+                            children: [
+                              Icon(
+                                Icons.emoji_events,
+                                color: Colors.amber[800],
+                                size: 60,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                titulo,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 28,
+                                  color: Colors.amber[900],
+                                  letterSpacing: 1.2,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                          content: Text(
+                            mensajeAlerta,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          actionsAlignment: MainAxisAlignment.center,
+                          actions: [
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.amber[700],
+                                foregroundColor: Colors.white,
+                                textStyle: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.check_circle_outline),
+                              label: const Text("Aceptar"),
+                            ),
+                          ],
+                        )
+                        : AlertDialog(
+                          title: Text(
+                            titulo,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: ResponsiveConfig.subtitleSize,
+                            ),
+                          ),
+                          content: Text(mensajeAlerta),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text("Aceptar"),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    content: Text(
-                      mensajeAlerta,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-                      textAlign: TextAlign.center,
-                    ),
-                    actionsAlignment: MainAxisAlignment.center,
-                    actions: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber[700],
-                          foregroundColor: Colors.white,
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text("Aceptar"),
-                      ),
-                    ],
-                  )
-                : AlertDialog(
-                    title: Text(titulo, style: TextStyle(fontWeight: FontWeight.bold, fontSize: ResponsiveConfig.subtitleSize)),
-                    content: Text(mensajeAlerta),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("Aceptar"),
-                      )
-                    ],
-                  ),
-          );
-        },
-      ),
+              );
+            },
+          ),
     );
   }
 
-  void mostrarAlertaParticipante(BuildContext context, Map<String, dynamic> part) {
+  void mostrarAlertaParticipante(
+    BuildContext context,
+    Map<String, dynamic> part,
+  ) {
     final focusNode = FocusNode();
     showDialog(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) {
-          return RawKeyboardListener(
-            focusNode: focusNode,
-            autofocus: true,
-            onKey: (RawKeyEvent event) {
-              if (event is RawKeyDownEvent &&
-                  (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                Navigator.pop(context);
-                registrarGanador(context);
-              }
-            },
-            child: AlertDialog(
-              title: Text(
-                part['full_name'] ?? '',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: ResponsiveConfig.titleSize),
-                textAlign: TextAlign.center,
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text("DNI: \\${part['document']}", style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
-                  Text("Barrio: \\${part['neighborhood']}", style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
-                  Text("Grupo: \\${part['group']}", style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
-                  Text("Nro de Orden: \\${part['order_number']}", style: TextStyle(fontSize: ResponsiveConfig.bodySize)),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
+      builder:
+          (_) => StatefulBuilder(
+            builder: (context, setState) {
+              return RawKeyboardListener(
+                focusNode: focusNode,
+                autofocus: true,
+                onKey: (RawKeyEvent event) {
+                  if (event is RawKeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.enter ||
+                          event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
                     Navigator.pop(context);
                     registrarGanador(context);
-                  },
-                  child: Text("Aceptar y Registrar", style: TextStyle(fontSize: ResponsiveConfig.bodySize, color: Colors.green, fontWeight: FontWeight.bold)),
-                )
-              ],
-            ),
-          );
-        },
-      ),
+                  }
+                },
+                child: AlertDialog(
+                  title: Text(
+                    part['full_name'] ?? '',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: ResponsiveConfig.titleSize,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "DNI: \\${part['document']}",
+                        style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                      ),
+                      Text(
+                        "Barrio: \\${part['neighborhood']}",
+                        style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                      ),
+                      Text(
+                        "Grupo: \\${part['group']}",
+                        style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                      ),
+                      Text(
+                        "Nro de Orden: \\${part['order_number']}",
+                        style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        registrarGanador(context);
+                      },
+                      child: Text(
+                        "Aceptar y Registrar",
+                        style: TextStyle(
+                          fontSize: ResponsiveConfig.bodySize,
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
     );
   }
 
@@ -348,17 +456,21 @@ class SearchParticipanteController extends GetxController {
     // Verificar cantidad de ganadores y viviendas
     final countResult = await db.rawQuery(
       'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
-      [participante.value!['neighborhood'], participante.value!['group']]
+      [participante.value!['neighborhood'], participante.value!['group']],
     );
-    final countGanadores = countResult.first['count'] is int
-        ? countResult.first['count'] as int
-        : int.tryParse(countResult.first['count']?.toString() ?? '0') ?? 0;
+    final countGanadores =
+        countResult.first['count'] is int
+            ? countResult.first['count'] as int
+            : int.tryParse(countResult.first['count']?.toString() ?? '0') ?? 0;
     // Obtener cantidad de viviendas
     final infoResult = await db.query(
       'participantes',
       columns: ['viviendas'],
       where: 'neighborhood = ? AND "group" = ?',
-      whereArgs: [participante.value!['neighborhood'], participante.value!['group']],
+      whereArgs: [
+        participante.value!['neighborhood'],
+        participante.value!['group'],
+      ],
       limit: 1,
     );
     int viviendas = 0;
@@ -368,7 +480,11 @@ class SearchParticipanteController extends GetxController {
     }
     // Si ya se llegó al límite de ganadores
     if (countGanadores >= viviendas && viviendas > 0) {
-      mostrarAlerta(context, "Sorteo completo", "Se completó el sorteo del Barrio '${participante.value!['neighborhood']}' Grupo '${participante.value!['group']}' con $viviendas Viviendas.");
+      mostrarAlerta(
+        context,
+        "Sorteo completo",
+        "Se completó el sorteo del Barrio '${participante.value!['neighborhood']}' Grupo '${participante.value!['group']}' con $viviendas Viviendas.",
+      );
       participante.value = null;
       mensaje.value = '';
       return;
@@ -377,7 +493,11 @@ class SearchParticipanteController extends GetxController {
     final yaGanador = await db.query(
       'ganadores',
       where: 'order_number = ? AND neighborhood = ? AND "group" = ?',
-      whereArgs: [participante.value!['order_number'], participante.value!['neighborhood'], participante.value!['group']],
+      whereArgs: [
+        participante.value!['order_number'],
+        participante.value!['neighborhood'],
+        participante.value!['group'],
+      ],
     );
     if (yaGanador.isNotEmpty) {
       mensaje.value = 'Este participante ya fue registrado como ganador.';
@@ -388,12 +508,16 @@ class SearchParticipanteController extends GetxController {
       'ganadores',
       columns: ['position'],
       where: 'neighborhood = ? AND "group" = ?',
-      whereArgs: [participante.value!['neighborhood'], participante.value!['group']],
+      whereArgs: [
+        participante.value!['neighborhood'],
+        participante.value!['group'],
+      ],
       orderBy: 'position ASC',
     );
     // Buscar el menor hueco disponible
     int nuevaPosicion = 1;
-    final posicionesOcupadas = posicionesResult.map((e) => e['position'] as int).toList()..sort();
+    final posicionesOcupadas =
+        posicionesResult.map((e) => e['position'] as int).toList()..sort();
     for (int i = 1; i <= posicionesOcupadas.length; i++) {
       if (!posicionesOcupadas.contains(i)) {
         nuevaPosicion = i;
@@ -428,11 +552,18 @@ class SearchParticipanteController extends GetxController {
     await cargarInfoGrupo();
     // Mostrar alert de cierre si se completó el sorteo justo ahora
     if (nuevaPosicion == viviendas && viviendas > 0) {
-      mostrarAlerta(context, "Sorteo completo", "Se completó el sorteo del Barrio '${barrioSeleccionado.value}' Grupo '${grupoSeleccionado.value}' con $viviendas Viviendas.");
+      mostrarAlerta(
+        context,
+        "Sorteo completo",
+        "Se completó el sorteo del Barrio '${barrioSeleccionado.value}' Grupo '${grupoSeleccionado.value}' con $viviendas Viviendas.",
+      );
     }
   }
 
-  Future<void> eliminarGanador(BuildContext context, Map<String, dynamic> ganador) async {
+  Future<void> eliminarGanador(
+    BuildContext context,
+    Map<String, dynamic> ganador,
+  ) async {
     final TextEditingController pinController = TextEditingController();
     bool eliminado = false;
     await showDialog(
@@ -448,7 +579,8 @@ class SearchParticipanteController extends GetxController {
               autofocus: true,
               onKey: (RawKeyEvent event) {
                 if (event is RawKeyDownEvent &&
-                    (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                    (event.logicalKey == LogicalKeyboardKey.enter ||
+                        event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
                   if (pinController.text == '123456') {
                     eliminado = true;
                     Navigator.pop(context);
@@ -464,8 +596,8 @@ class SearchParticipanteController extends GetxController {
                   children: [
                     Text('¿Estás seguro que deseas eliminar a este ganador?'),
                     const SizedBox(height: 12),
-                    Text('Nombre: ' + (ganador['full_name'] ?? '')), 
-                    Text('DNI: ' + (ganador['document'] ?? '')), 
+                    Text('Nombre: ' + (ganador['full_name'] ?? '')),
+                    Text('DNI: ' + (ganador['document'] ?? '')),
                     const SizedBox(height: 16),
                     const Text('Ingresá el pin de 6 dígitos para confirmar:'),
                     SizedBox(
@@ -478,7 +610,11 @@ class SearchParticipanteController extends GetxController {
                         defaultPinTheme: PinTheme(
                           width: 36,
                           height: 48,
-                          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.orange[100],
                             border: Border.all(color: Colors.orange, width: 2),
@@ -488,20 +624,34 @@ class SearchParticipanteController extends GetxController {
                         focusedPinTheme: PinTheme(
                           width: 36,
                           height: 48,
-                          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.orange[200],
-                            border: Border.all(color: Colors.deepOrange, width: 2.5),
+                            border: Border.all(
+                              color: Colors.deepOrange,
+                              width: 2.5,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         submittedPinTheme: PinTheme(
                           width: 36,
                           height: 48,
-                          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.orange[300],
-                            border: Border.all(color: Colors.deepOrange, width: 2.5),
+                            border: Border.all(
+                              color: Colors.deepOrange,
+                              width: 2.5,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
@@ -512,7 +662,10 @@ class SearchParticipanteController extends GetxController {
                     if (errorPin.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(errorPin, style: const TextStyle(color: Colors.red)),
+                        child: Text(
+                          errorPin,
+                          style: const TextStyle(color: Colors.red),
+                        ),
                       ),
                   ],
                 ),
@@ -530,7 +683,10 @@ class SearchParticipanteController extends GetxController {
                         setState(() => errorPin = 'Pin incorrecto');
                       }
                     },
-                    child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                    child: const Text(
+                      'Eliminar',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),

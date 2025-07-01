@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 //Importaciones de archivos
 import 'package:sorteo_ipv_system/src/presentation/screens/screen.dart';
+import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -32,8 +34,23 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.orange,
-        title: Text('Sorteo oficial de Viviendas del IPV- San Juan 2025'),
+        title: Text(
+          'Sorteo oficial de Viviendas del IPV- San Juan 2025',
+          style: TextStyle(color: Colors.white),
+        ),
         elevation: 3.0,
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            label: Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              // Limpiar usuario logueado y navegar a login
+              final loginCtrl = Get.find<LoginController>();
+              loginCtrl.usuarioLogueado.value = null;
+              Get.offAllNamed('/login');
+            },
+          ),
+        ],
       ),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,9 +92,7 @@ class _HomePageState extends State<HomePage> {
                   title: Text(_titles[selectedIndex]),
                   automaticallyImplyLeading: false,
                 ),
-                Expanded(
-                  child: _screens[selectedIndex],
-                ),
+                Expanded(child: _screens[selectedIndex]),
               ],
             ),
           ),
