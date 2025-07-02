@@ -163,7 +163,9 @@ class SearchParticipanteScreen extends StatelessWidget {
                               curve: Curves.easeInOut,
                               decoration: BoxDecoration(
                                 color:
-                                    controller.sorteoCerrado.value
+                                    g['eliminado'] == true
+                                        ? Colors.grey.shade300
+                                        : controller.sorteoCerrado.value
                                         ? Colors.green.shade100
                                         : (controller.ultimoGanadorId.value !=
                                                 null &&
@@ -176,53 +178,97 @@ class SearchParticipanteScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: ListTile(
+                                leading:
+                                    g['eliminado'] == true
+                                        ? const Icon(
+                                          Icons.delete_forever,
+                                          color: Colors.red,
+                                        )
+                                        : null,
                                 title: Text(
                                   '${g['full_name']} | Número de SORTEO: \\ ${g['order_number']}' ??
                                       '',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w500,
                                     color:
-                                        controller.sorteoCerrado.value
+                                        g['eliminado'] == true
+                                            ? Colors.red.shade700
+                                            : controller.sorteoCerrado.value
                                             ? Colors.green
+                                            : null,
+                                    decoration:
+                                        g['eliminado'] == true
+                                            ? TextDecoration.lineThrough
                                             : null,
                                   ),
                                 ),
-                                subtitle: Text(
-                                  'POSICIÓN: \\ ${g['position']} | DNI: \\${g['document']} | Barrio: \\${g['neighborhood']} | Grupo: \\${g['group']}',
-                                  style: TextStyle(
-                                    color:
-                                        controller.sorteoCerrado.value
-                                            ? Colors.green
-                                            : null,
-                                  ),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Fecha: \\${g['fecha']}',
+                                      'POSICIÓN: \\ ${g['position']} | DNI: \\${g['document']} | Barrio: \\${g['neighborhood']} | Grupo: \\${g['group']}',
                                       style: TextStyle(
                                         color:
-                                            controller.sorteoCerrado.value
+                                            g['eliminado'] == true
+                                                ? Colors.red.shade700
+                                                : controller.sorteoCerrado.value
                                                 ? Colors.green
+                                                : null,
+                                        decoration:
+                                            g['eliminado'] == true
+                                                ? TextDecoration.lineThrough
                                                 : null,
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
-                                      ),
-                                      tooltip: 'Eliminar ganador',
-                                      onPressed:
-                                          () => controller.eliminarGanador(
-                                            context,
-                                            g,
+                                    if (g['eliminado'] == true)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 4.0,
+                                        ),
+                                        child: Text(
+                                          'Eliminado por: ${g['eliminado_por'] ?? '-'} | Fecha de baja: ${g['fecha_baja'] != null ? g['fecha_baja'].toString().replaceFirst('T', ' ').substring(0, 19) : '-'}',
+                                          style: TextStyle(
+                                            color: Colors.red.shade700,
+                                            fontStyle: FontStyle.italic,
+                                            fontSize: 13,
                                           ),
-                                    ),
+                                        ),
+                                      ),
                                   ],
                                 ),
+                                trailing:
+                                    g['eliminado'] == true
+                                        ? null
+                                        : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'Fecha: \\${g['fecha']}',
+                                              style: TextStyle(
+                                                color:
+                                                    controller
+                                                            .sorteoCerrado
+                                                            .value
+                                                        ? Colors.green
+                                                        : null,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.delete,
+                                                color: Colors.red,
+                                              ),
+                                              tooltip: 'Eliminar ganador',
+                                              onPressed:
+                                                  () => controller
+                                                      .eliminarGanador(
+                                                        context,
+                                                        g,
+                                                      ),
+                                            ),
+                                          ],
+                                        ),
                               ),
                             );
                           },

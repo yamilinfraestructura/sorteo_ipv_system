@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 import 'package:flutter/services.dart';
 import 'package:pinput/pinput.dart';
+import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class SearchParticipanteController extends GetxController {
   var barrios = <String>['Seleccionar'].obs;
@@ -66,6 +69,8 @@ class SearchParticipanteController extends GetxController {
     final db = await DatabaseHelper.database;
     String? barrio = barrioSeleccionado.value;
     String? grupo = grupoSeleccionado.value;
+    List<Map<String, dynamic>> lista = [];
+    // Ganadores activos
     List<Map<String, dynamic>> resultado;
     if (barrio != null &&
         barrio != 'Seleccionar' &&
@@ -97,7 +102,6 @@ class SearchParticipanteController extends GetxController {
     } else {
       resultado = await db.query('ganadores', orderBy: 'fecha DESC', limit: 10);
     }
-    final List<Map<String, dynamic>> lista = [];
     for (var item in resultado) {
       final participanteDb = await db.query(
         'participantes',
@@ -109,9 +113,65 @@ class SearchParticipanteController extends GetxController {
           ...item,
           'full_name': participanteDb.first['full_name'],
           'document': participanteDb.first['document'],
+          'eliminado': false,
         });
       }
     }
+    // Ganadores eliminados
+    List<Map<String, dynamic>> eliminados;
+    if (barrio != null &&
+        barrio != 'Seleccionar' &&
+        grupo != null &&
+        grupo != 'Seleccionar') {
+      eliminados = await db.rawQuery(
+        '''
+        SELECT e.*, u.user_name as eliminado_por FROM eliminados e
+        LEFT JOIN usuarios u ON e.id_user = u.id_user
+        WHERE e.neighborhood = ? AND e."group" = ?
+        ORDER BY fecha_baja DESC
+        LIMIT 10
+      ''',
+        [barrio, grupo],
+      );
+    } else if (barrio != null && barrio != 'Seleccionar') {
+      eliminados = await db.rawQuery(
+        '''
+        SELECT e.*, u.user_name as eliminado_por FROM eliminados e
+        LEFT JOIN usuarios u ON e.id_user = u.id_user
+        WHERE e.neighborhood = ?
+        ORDER BY fecha_baja DESC
+        LIMIT 10
+      ''',
+        [barrio],
+      );
+    } else if (grupo != null && grupo != 'Seleccionar') {
+      eliminados = await db.rawQuery(
+        '''
+        SELECT e.*, u.user_name as eliminado_por FROM eliminados e
+        LEFT JOIN usuarios u ON e.id_user = u.id_user
+        WHERE e."group" = ?
+        ORDER BY fecha_baja DESC
+        LIMIT 10
+      ''',
+        [grupo],
+      );
+    } else {
+      eliminados = await db.rawQuery('''
+        SELECT e.*, u.user_name as eliminado_por FROM eliminados e
+        LEFT JOIN usuarios u ON e.id_user = u.id_user
+        ORDER BY fecha_baja DESC
+        LIMIT 10
+      ''');
+    }
+    for (var e in eliminados) {
+      lista.add({...e, 'eliminado': true});
+    }
+    // Ordenar por fecha (puedes ajustar el criterio si lo deseas)
+    lista.sort((a, b) {
+      final fa = a['eliminado'] ? a['fecha_baja'] ?? '' : a['fecha'] ?? '';
+      final fb = b['eliminado'] ? b['fecha_baja'] ?? '' : b['fecha'] ?? '';
+      return (fb as String).compareTo(fa as String);
+    });
     ganadoresRecientes.value = lista;
 
     // Lógica para saber si el sorteo está cerrado (usando viviendas)
@@ -577,15 +637,27 @@ class SearchParticipanteController extends GetxController {
             return RawKeyboardListener(
               focusNode: focusNode,
               autofocus: true,
-              onKey: (RawKeyEvent event) {
+              onKey: (RawKeyEvent event) async {
                 if (event is RawKeyDownEvent &&
                     (event.logicalKey == LogicalKeyboardKey.enter ||
                         event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                  if (pinController.text == '123456') {
+                  final loginCtrl = Get.find<LoginController>();
+                  final user = loginCtrl.usuarioLogueado.value;
+                  final pinIngresado = pinController.text;
+                  final perfil = user?['perfil_user']?.toString() ?? '';
+                  final pinHashGuardado = user?['password']?.toString() ?? '';
+                  final pinHashIngresado =
+                      sha256.convert(utf8.encode(pinIngresado)).toString();
+                  if (pinIngresado.length == 6 &&
+                      perfil.isNotEmpty &&
+                      (perfil == 'Desarrollador' ||
+                          perfil == 'Ministro' ||
+                          perfil == 'Gobernador') &&
+                      pinHashIngresado == pinHashGuardado) {
                     eliminado = true;
                     Navigator.pop(context);
                   } else {
-                    setState(() => errorPin = 'Pin incorrecto');
+                    setState(() => errorPin = 'Pin o perfil incorrecto');
                   }
                 }
               },
@@ -675,12 +747,25 @@ class SearchParticipanteController extends GetxController {
                     child: const Text('Cancelar'),
                   ),
                   TextButton(
-                    onPressed: () {
-                      if (pinController.text == '123456') {
+                    onPressed: () async {
+                      final loginCtrl = Get.find<LoginController>();
+                      final user = loginCtrl.usuarioLogueado.value;
+                      final pinIngresado = pinController.text;
+                      final perfil = user?['perfil_user']?.toString() ?? '';
+                      final pinHashGuardado =
+                          user?['password']?.toString() ?? '';
+                      final pinHashIngresado =
+                          sha256.convert(utf8.encode(pinIngresado)).toString();
+                      if (pinIngresado.length == 6 &&
+                          perfil.isNotEmpty &&
+                          (perfil == 'Desarrollador' ||
+                              perfil == 'Ministro' ||
+                              perfil == 'Gobernador') &&
+                          pinHashIngresado == pinHashGuardado) {
                         eliminado = true;
                         Navigator.pop(context);
                       } else {
-                        setState(() => errorPin = 'Pin incorrecto');
+                        setState(() => errorPin = 'Pin o perfil incorrecto');
                       }
                     },
                     child: const Text(
@@ -696,9 +781,27 @@ class SearchParticipanteController extends GetxController {
       },
     );
     if (eliminado) {
-      await DatabaseHelper.eliminarGanadorPorId(ganador['id'] as int);
-      await cargarGanadoresRecientes();
-      mensaje.value = 'Ganador eliminado correctamente.';
+      try {
+        final loginCtrl = Get.find<LoginController>();
+        final idUser = loginCtrl.usuarioLogueado.value?['id_user'] ?? 0;
+        await DatabaseHelper.eliminarGanadorPorId(ganador['id'] as int, idUser);
+        await cargarGanadoresRecientes();
+        mensaje.value = 'Ganador eliminado correctamente.';
+        Get.snackbar(
+          'Éxito',
+          'Ganador eliminado y registrado en historial.',
+          backgroundColor: Colors.green.shade100,
+          colorText: Colors.green.shade900,
+        );
+      } catch (e) {
+        mensaje.value = 'Error al eliminar ganador.';
+        Get.snackbar(
+          'Error',
+          'No se pudo eliminar el ganador.',
+          backgroundColor: Colors.red.shade100,
+          colorText: Colors.red.shade900,
+        );
+      }
     }
   }
 }

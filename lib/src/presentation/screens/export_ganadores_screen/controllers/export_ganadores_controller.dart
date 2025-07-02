@@ -1,10 +1,16 @@
 import 'package:get/get.dart';
+import 'package:pdf/pdf.dart';
 import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' as excel;
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:pinput/pinput.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 // Controlador para la pantalla de exportación de ganadores
 class ExportGanadoresController extends GetxController {
@@ -20,6 +26,7 @@ class ExportGanadoresController extends GetxController {
   var mensaje = ''.obs;
   // Estado de carga para mostrar spinners
   var isLoading = false.obs;
+  var sorteoCerrado = false.obs;
 
   @override
   void onInit() {
@@ -63,11 +70,43 @@ class ExportGanadoresController extends GetxController {
       grupos.value = [];
       grupoSeleccionado.value = '';
     }
+    await verificarSorteoCerrado();
   }
 
   /// Maneja el cambio de grupo en el filtro.
-  void onGrupoChanged(String? val) {
+  void onGrupoChanged(String? val) async {
     grupoSeleccionado.value = val ?? '';
+    await verificarSorteoCerrado();
+  }
+
+  Future<void> verificarSorteoCerrado() async {
+    sorteoCerrado.value = false;
+    if (barrioSeleccionado.value.isEmpty || grupoSeleccionado.value.isEmpty)
+      return;
+    final db = await DatabaseHelper.database;
+    // Contar ganadores
+    final countResult = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
+      [barrioSeleccionado.value, grupoSeleccionado.value],
+    );
+    final totalGanadores =
+        countResult.first['count'] is int
+            ? countResult.first['count'] as int
+            : int.tryParse(countResult.first['count']?.toString() ?? '0') ?? 0;
+    // Obtener viviendas
+    final infoResult = await db.query(
+      'participantes',
+      columns: ['viviendas'],
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+      limit: 1,
+    );
+    int viviendas = 0;
+    if (infoResult.isNotEmpty) {
+      final v = infoResult.first['viviendas'];
+      viviendas = v is int ? v : int.tryParse(v?.toString() ?? '0') ?? 0;
+    }
+    sorteoCerrado.value = viviendas > 0 && totalGanadores == viviendas;
   }
 
   /// Exporta los ganadores filtrados a un archivo Excel con el formato requerido.
@@ -86,7 +125,10 @@ class ExportGanadoresController extends GetxController {
     );
     if (ganadores.isEmpty) {
       // ignore: use_build_context_synchronously
-      mostrarMensaje(context, 'No hay ganadores registrados para este barrio y grupo.');
+      mostrarMensaje(
+        context,
+        'No hay ganadores registrados para este barrio y grupo.',
+      );
       return;
     }
     final participante = await db.query(
@@ -97,58 +139,109 @@ class ExportGanadoresController extends GetxController {
     final p = participante.isNotEmpty ? participante.first : {};
     final grupo = p['group']?.toString() ?? '';
     final barrio = p['neighborhood']?.toString() ?? '';
-    final viviendas = p['viviendas'] is int ? p['viviendas'] : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
-    final familias = p['familias'] is int ? p['familias'] : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
+    final viviendas =
+        p['viviendas'] is int
+            ? p['viviendas']
+            : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
+    final familias =
+        p['familias'] is int
+            ? p['familias']
+            : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
 
     // Crear el Excel y renombrar la hoja por defecto a 'Ganadores' si existe
-    final excel = Excel.createExcel();
-    String defaultSheet = excel.getDefaultSheet() ?? '';
+    final excelFile = excel.Excel.createExcel();
+    String defaultSheet = excelFile.getDefaultSheet() ?? '';
     if (defaultSheet.isNotEmpty && defaultSheet != 'Ganadores') {
-      excel.rename(defaultSheet, 'Ganadores');
+      excelFile.rename(defaultSheet, 'Ganadores');
     }
     // Eliminar cualquier otra hoja que no sea 'Ganadores'
-    for (final sheetName in List<String>.from(excel.sheets.keys)) {
+    for (final sheetName in List<String>.from(excelFile.sheets.keys)) {
       if (sheetName != 'Ganadores') {
-        excel.delete(sheetName);
+        excelFile.delete(sheetName);
       }
     }
-    final sheet = excel['Ganadores'];
+    final sheet = excelFile['Ganadores'];
     // Fila 1 vacía
     sheet.appendRow([null, null, null, null, null, null]);
     // Fila 2: Título
-    sheet.appendRow([null, TextCellValue('Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025'), null, null, null, null]);
-    sheet.merge(CellIndex.indexByString("B2"), CellIndex.indexByString("F2"));
+    sheet.appendRow([
+      null,
+      excel.TextCellValue(
+        'Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025',
+      ),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B2"),
+      excel.CellIndex.indexByString("F2"),
+    );
     // Fila 3 vacía
     sheet.appendRow([null, null, null, null, null, null]);
     // Fila 4: Grupo
-    sheet.appendRow([null, TextCellValue('Grupo: $grupo'), null, null, null, null]);
-    sheet.merge(CellIndex.indexByString("B4"), CellIndex.indexByString("F4"));
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Grupo: $grupo'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B4"),
+      excel.CellIndex.indexByString("F4"),
+    );
     // Fila 5: Viviendas y Familias
-    sheet.appendRow([null, TextCellValue('$viviendas Viviendas, $familias Familias'), null, null, null, null]);
-    sheet.merge(CellIndex.indexByString("B5"), CellIndex.indexByString("F5"));
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('$viviendas Viviendas, $familias Familias'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B5"),
+      excel.CellIndex.indexByString("F5"),
+    );
     // Fila 6: Barrio
-    sheet.appendRow([null, TextCellValue('Barrio: $barrio'), null, null, null, null]);
-    sheet.merge(CellIndex.indexByString("B6"), CellIndex.indexByString("F6"));
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Barrio: $barrio'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B6"),
+      excel.CellIndex.indexByString("F6"),
+    );
     // Fila 7 vacía
     sheet.appendRow([null, null, null, null, null, null]);
-    // Fila 8 vacía
+    // Fila 8 vacía (nueva para ajustar encabezado en fila 9)
     sheet.appendRow([null, null, null, null, null, null]);
     // Fila 9: Encabezados
     sheet.appendRow([
       null,
-      TextCellValue('Posición'),
-      TextCellValue('Nro Orden'),
-      TextCellValue('Documento'),
-      TextCellValue('Apellido Nombre'),
+      excel.TextCellValue('Posición'),
+      excel.TextCellValue('Nro Orden'),
+      excel.TextCellValue('Documento'),
+      excel.TextCellValue('Apellido Nombre'),
     ]);
     for (var col = 1; col <= 4; col++) {
-      final headerCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 9));
-      headerCell.cellStyle = CellStyle(
+      final headerCell = sheet.cell(
+        excel.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 9),
+      );
+      headerCell.cellStyle = excel.CellStyle(
         bold: true,
-        horizontalAlign: HorizontalAlign.Center,
+        horizontalAlign: excel.HorizontalAlign.Center,
       );
     }
     // Los datos deben empezar en la fila 10
+    int rowIndex = 9;
     for (var ganador in ganadores) {
       final participante = await db.query(
         'participantes',
@@ -161,17 +254,50 @@ class ExportGanadoresController extends GetxController {
         final order = p['order_number'];
         final doc = p['document']?.toString().trim() ?? '';
         final nombre = p['full_name']?.toString().trim() ?? '';
-        // Filtro: solo agregar si todos los campos clave son válidos
-        if (pos != null && pos != 0 && order != null && order != 0 && doc.isNotEmpty && nombre.isNotEmpty) {
-          sheet.appendRow([
+        // Solo agregar si position es válido y la fila no está vacía
+        if (pos != null &&
+            pos != 0 &&
+            order != null &&
+            order != 0 &&
+            doc.isNotEmpty &&
+            nombre.isNotEmpty) {
+          final fila = [
             null,
-            IntCellValue(pos as int),
-            IntCellValue(order as int),
-            TextCellValue(doc),
-            TextCellValue(nombre),
-          ]);
+            excel.IntCellValue(pos as int),
+            excel.IntCellValue(order as int),
+            excel.TextCellValue(doc),
+            excel.TextCellValue(nombre),
+          ];
+          final tieneDatos = fila
+              .skip(1)
+              .any(
+                (cell) =>
+                    (cell is excel.IntCellValue &&
+                        cell.value != null &&
+                        cell.value != 0) ||
+                    (cell is excel.TextCellValue &&
+                        (cell.value?.toString().trim().isNotEmpty ?? false)),
+              );
+          if (tieneDatos) {
+            // Escribir la fila de datos en la fila correspondiente (rowIndex)
+            for (var col = 0; col < fila.length; col++) {
+              sheet.updateCell(
+                excel.CellIndex.indexByColumnRow(
+                  columnIndex: col,
+                  rowIndex: rowIndex,
+                ),
+                fila[col],
+              );
+            }
+            rowIndex++;
+          }
         }
       }
+    }
+    // Eliminar la fila 10 (índice 9) si está vacía
+    if (sheet.rows.length > 9 &&
+        (sheet.rows[9].every((cell) => cell == null))) {
+      sheet.removeRow(9);
     }
     for (var col = 1; col <= 4; col++) {
       sheet.setColumnWidth(col, col == 4 ? 30.0 : 15.0);
@@ -179,16 +305,18 @@ class ExportGanadoresController extends GetxController {
     String cleanFileName(String input) {
       return input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
     }
+
     final safeBarrio = cleanFileName(barrio);
     final safeGrupo = cleanFileName(grupo);
     final savePath = await FilePicker.platform.saveFile(
       dialogTitle: 'Guardar archivo Excel',
-      fileName: 'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx',
+      fileName:
+          'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx',
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
     );
     if (savePath == null) return;
-    final fileBytes = excel.encode();
+    final fileBytes = excelFile.encode();
     if (fileBytes == null) {
       // ignore: use_build_context_synchronously
       mostrarMensaje(context, 'Error al generar archivo Excel.');
@@ -200,35 +328,151 @@ class ExportGanadoresController extends GetxController {
     mostrarMensaje(context, 'Archivo exportado correctamente.');
   }
 
+  /// Exporta los ganadores filtrados a un archivo PDF con el formato requerido.
+  Future<void> exportarPdf(BuildContext context) async {
+    final db = await DatabaseHelper.database;
+    final ganadores = await db.query(
+      'ganadores',
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+      orderBy: 'position ASC',
+    );
+    final participantes = await db.query(
+      'participantes',
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+    );
+    int viviendas = 0;
+    int familias = 0;
+    String barrio = '';
+    String grupo = '';
+    if (participantes.isNotEmpty) {
+      final p = participantes.first;
+      viviendas =
+          p['viviendas'] is int
+              ? p['viviendas'] as int
+              : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
+      familias =
+          p['familias'] is int
+              ? p['familias'] as int
+              : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
+      barrio = p['neighborhood']?.toString() ?? '';
+      grupo = p['group']?.toString() ?? '';
+    }
+    // Construir la lista de filas para la tabla PDF
+    List<List<dynamic>> filasTabla = [];
+    for (var ganador in ganadores) {
+      final participante = participantes.firstWhere(
+        (p) => p['id'] == ganador['participanteId'],
+        orElse: () => {},
+      );
+      if (participante.isEmpty) continue;
+      final pos = ganador['position'];
+      final order = participante['order_number'];
+      final doc = participante['document']?.toString().trim() ?? '';
+      final nombre = participante['full_name']?.toString().trim() ?? '';
+      if (pos == null ||
+          pos == 0 ||
+          order == null ||
+          order == 0 ||
+          doc.isEmpty ||
+          nombre.isEmpty) {
+        continue;
+      }
+      filasTabla.add([pos, order, doc, nombre]);
+    }
+    final pdf = pw.Document();
+    // Espacio para el logo (puedes agregarlo luego aquí)
+    // final logo = pw.MemoryImage(await rootBundle.load('assets/logo.png'));
+    // pdf.addPage(pw.Page(
+    //   build: (context) => pw.Center(child: pw.Image(logo)),
+    // ));
+    pdf.addPage(
+      pw.MultiPage(
+        build:
+            (context) => [
+              pw.SizedBox(height: 16),
+              pw.Center(
+                child: pw.Text(
+                  'Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.SizedBox(height: 12),
+              pw.Text('Grupo: $grupo', style: pw.TextStyle(fontSize: 12)),
+              pw.Text(
+                '$viviendas Viviendas, $familias Familias',
+                style: pw.TextStyle(fontSize: 12),
+              ),
+              pw.Text('Barrio: $barrio', style: pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 18),
+              pw.Table.fromTextArray(
+                headers: [
+                  'Posición',
+                  'Nro Orden',
+                  'Documento',
+                  'Apellido Nombre',
+                ],
+                data: filasTabla,
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                cellAlignment: pw.Alignment.centerLeft,
+                cellStyle: pw.TextStyle(fontSize: 10),
+                headerDecoration: pw.BoxDecoration(color: PdfColors.grey300),
+                border: pw.TableBorder.all(
+                  width: 0.5,
+                  color: PdfColors.grey600,
+                ),
+              ),
+            ],
+      ),
+    );
+    final output = await FilePicker.platform.saveFile(
+      dialogTitle: 'Guardar archivo PDF',
+      fileName: 'Ganadores - Barrio $barrio - Grupo $grupo.pdf',
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+    );
+    if (output == null) return;
+    final file = File(output);
+    await file.writeAsBytes(await pdf.save());
+    mostrarMensaje(context, 'Archivo PDF exportado correctamente.');
+  }
+
   /// Muestra un mensaje emergente (diálogo) en la pantalla.
   void mostrarMensaje(BuildContext context, String msg) {
     final focusNode = FocusNode();
     showDialog(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) {
-          return RawKeyboardListener(
-            focusNode: focusNode,
-            autofocus: true,
-            onKey: (RawKeyEvent event) {
-              if (event is RawKeyDownEvent &&
-                  (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                Navigator.pop(context);
-              }
+      builder:
+          (_) => StatefulBuilder(
+            builder: (context, setState) {
+              return RawKeyboardListener(
+                focusNode: focusNode,
+                autofocus: true,
+                onKey: (RawKeyEvent event) {
+                  if (event is RawKeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.enter ||
+                          event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                    Navigator.pop(context);
+                  }
+                },
+                child: AlertDialog(
+                  title: const Text("Exportación"),
+                  content: Text(msg),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Aceptar"),
+                    ),
+                  ],
+                ),
+              );
             },
-            child: AlertDialog(
-              title: const Text("Exportación"),
-              content: Text(msg),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Aceptar"),
-                )
-              ],
-            ),
-          );
-        },
-      ),
+          ),
     );
   }
 
@@ -237,6 +481,174 @@ class ExportGanadoresController extends GetxController {
     await cargarBarrios();
     if (barrioSeleccionado.value.isNotEmpty) {
       await cargarGrupos(barrioSeleccionado.value);
+    }
+  }
+
+  Future<void> exportarConPin(BuildContext context) async {
+    final TextEditingController pinController = TextEditingController();
+    String errorPin = '';
+    bool autorizado = false;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final focusNode = FocusNode();
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return RawKeyboardListener(
+              focusNode: focusNode,
+              autofocus: true,
+              onKey: (RawKeyEvent event) async {
+                if (event is RawKeyDownEvent &&
+                    (event.logicalKey == LogicalKeyboardKey.enter ||
+                        event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                  final loginCtrl = Get.find<LoginController>();
+                  final user = loginCtrl.usuarioLogueado.value;
+                  final pinIngresado = pinController.text;
+                  final perfil = user?['perfil_user']?.toString() ?? '';
+                  final pinHashGuardado = user?['password']?.toString() ?? '';
+                  final pinHashIngresado =
+                      sha256.convert(utf8.encode(pinIngresado)).toString();
+                  if (pinIngresado.length == 6 &&
+                      perfil.isNotEmpty &&
+                      (perfil == 'Desarrollador' ||
+                          perfil == 'Ministro' ||
+                          perfil == 'Gobernador') &&
+                      pinHashIngresado == pinHashGuardado) {
+                    autorizado = true;
+                    Navigator.pop(context);
+                  } else {
+                    setState(() => errorPin = 'Pin o perfil incorrecto');
+                  }
+                }
+              },
+              child: AlertDialog(
+                title: const Text('Confirmar exportación'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '¿Deseas exportar los ganadores del Barrio "${barrioSeleccionado.value}" y Grupo "${grupoSeleccionado.value}"?',
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Ingresá tu PIN para confirmar:'),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 220,
+                      child: Pinput(
+                        length: 6,
+                        controller: pinController,
+                        obscureText: true,
+                        autofocus: true,
+                        defaultPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[100],
+                            border: Border.all(color: Colors.orange, width: 2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        focusedPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[200],
+                            border: Border.all(
+                              color: Colors.deepOrange,
+                              width: 2.5,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        submittedPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[300],
+                            border: Border.all(
+                              color: Colors.deepOrange,
+                              width: 2.5,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onCompleted: (_) {},
+                      ),
+                    ),
+                    if (errorPin.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          errorPin,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      final loginCtrl = Get.find<LoginController>();
+                      final user = loginCtrl.usuarioLogueado.value;
+                      final pinIngresado = pinController.text;
+                      final perfil = user?['perfil_user']?.toString() ?? '';
+                      final pinHashGuardado =
+                          user?['password']?.toString() ?? '';
+                      final pinHashIngresado =
+                          sha256.convert(utf8.encode(pinIngresado)).toString();
+                      if (pinIngresado.length == 6 &&
+                          perfil.isNotEmpty &&
+                          (perfil == 'Desarrollador' ||
+                              perfil == 'Ministro' ||
+                              perfil == 'Gobernador') &&
+                          pinHashIngresado == pinHashGuardado) {
+                        autorizado = true;
+                        Navigator.pop(context);
+                      } else {
+                        setState(() => errorPin = 'Pin o perfil incorrecto');
+                      }
+                    },
+                    child: const Text(
+                      'Exportar',
+                      style: TextStyle(color: Colors.green),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    if (autorizado) {
+      await exportarExcel(context);
+    } else {
+      Get.snackbar(
+        'Error',
+        'No se pudo exportar: PIN o perfil incorrecto.',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+      );
     }
   }
 }

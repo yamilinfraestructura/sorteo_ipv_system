@@ -208,8 +208,28 @@ class DatabaseHelper {
     }
   }
 
-  static Future<void> eliminarGanadorPorId(int id) async {
+  static Future<void> eliminarGanadorPorId(int id, int idUser) async {
     final db = await database;
+    // Obtener el registro del ganador
+    final ganadores = await db.query(
+      'ganadores',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (ganadores.isNotEmpty) {
+      final g = ganadores.first;
+      await db.insert('eliminados', {
+        'ganador_id': g['id'],
+        'neighborhood': g['neighborhood'],
+        'group': g['group'],
+        'position': g['position'],
+        'order_number': g['order_number'],
+        'document': g['document'],
+        'full_name': g['full_name'],
+        'fecha_baja': DateTime.now().toIso8601String(),
+        'id_user': idUser,
+      });
+    }
     await db.delete('ganadores', where: 'id = ?', whereArgs: [id]);
   }
 }

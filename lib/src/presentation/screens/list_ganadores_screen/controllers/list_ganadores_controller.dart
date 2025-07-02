@@ -96,7 +96,7 @@ class ListGanadoresController extends GetxController {
       );
       final totalGanadores = lista.length;
       sorteoCerrado.value =
-          participantes.length > 0 && totalGanadores == participantes.length;
+          participantes.isNotEmpty && totalGanadores == participantes.length;
     } else {
       sorteoCerrado.value = false;
     }
