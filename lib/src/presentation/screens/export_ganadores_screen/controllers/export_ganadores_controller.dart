@@ -328,6 +328,11 @@ class ExportGanadoresController extends GetxController {
     mostrarMensaje(context, 'Archivo exportado correctamente.');
   }
 
+  /// Limpia el nombre del archivo para evitar caracteres no permitidos en Windows
+  String cleanFileName(String fileName) {
+    return fileName.replaceAll(RegExp(r'[\\/:*?"<>|–]'), '_');
+  }
+
   /// Exporta los ganadores filtrados a un archivo PDF con el formato requerido.
   Future<void> exportarPdf(BuildContext context) async {
     final db = await DatabaseHelper.database;
@@ -382,11 +387,10 @@ class ExportGanadoresController extends GetxController {
       filasTabla.add([pos, order, doc, nombre]);
     }
     final pdf = pw.Document();
-    // Espacio para el logo (puedes agregarlo luego aquí)
-    // final logo = pw.MemoryImage(await rootBundle.load('assets/logo.png'));
-    // pdf.addPage(pw.Page(
-    //   build: (context) => pw.Center(child: pw.Image(logo)),
-    // ));
+    // Cargar la fuente Roboto para el PDF
+    final robotoFont = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/Roboto-VariableFont_wdth,wght.ttf'),
+    );
     pdf.addPage(
       pw.MultiPage(
         build:
@@ -398,17 +402,24 @@ class ExportGanadoresController extends GetxController {
                   style: pw.TextStyle(
                     fontSize: 16,
                     fontWeight: pw.FontWeight.bold,
+                    font: robotoFont,
                   ),
                   textAlign: pw.TextAlign.center,
                 ),
               ),
               pw.SizedBox(height: 12),
-              pw.Text('Grupo: $grupo', style: pw.TextStyle(fontSize: 12)),
+              pw.Text(
+                'Grupo: $grupo',
+                style: pw.TextStyle(fontSize: 12, font: robotoFont),
+              ),
               pw.Text(
                 '$viviendas Viviendas, $familias Familias',
-                style: pw.TextStyle(fontSize: 12),
+                style: pw.TextStyle(fontSize: 12, font: robotoFont),
               ),
-              pw.Text('Barrio: $barrio', style: pw.TextStyle(fontSize: 12)),
+              pw.Text(
+                'Barrio: $barrio',
+                style: pw.TextStyle(fontSize: 12, font: robotoFont),
+              ),
               pw.SizedBox(height: 18),
               pw.Table.fromTextArray(
                 headers: [
@@ -418,9 +429,12 @@ class ExportGanadoresController extends GetxController {
                   'Apellido Nombre',
                 ],
                 data: filasTabla,
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  font: robotoFont,
+                ),
                 cellAlignment: pw.Alignment.centerLeft,
-                cellStyle: pw.TextStyle(fontSize: 10),
+                cellStyle: pw.TextStyle(fontSize: 10, font: robotoFont),
                 headerDecoration: pw.BoxDecoration(color: PdfColors.grey300),
                 border: pw.TableBorder.all(
                   width: 0.5,
@@ -430,9 +444,13 @@ class ExportGanadoresController extends GetxController {
             ],
       ),
     );
+    // Limpiar el nombre del archivo antes de sugerirlo
+    final suggestedFileName = cleanFileName(
+      'Ganadores - Barrio $barrio - Grupo $grupo.pdf',
+    );
     final output = await FilePicker.platform.saveFile(
       dialogTitle: 'Guardar archivo PDF',
-      fileName: 'Ganadores - Barrio $barrio - Grupo $grupo.pdf',
+      fileName: suggestedFileName,
       type: FileType.custom,
       allowedExtensions: ['pdf'],
     );
