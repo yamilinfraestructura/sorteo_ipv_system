@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 //Importaciones de archivos
 import 'package:sorteo_ipv_system/src/presentation/screens/screen.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';
+import 'package:sorteo_ipv_system/src/presentation/screens/settings_screen/settings_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,11 +16,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
 
-  final List<Widget> _screens = const [
+  final List<Widget> _screens = [
     ImportPadronesScreen(),
     SearchParticipanteScreen(),
     ListGanadoresScreen(),
     ExportGanadoresScreen(),
+    SettingsScreen(),
   ];
 
   final List<String> _titles = [
@@ -27,6 +29,7 @@ class _HomePageState extends State<HomePage> {
     "Buscar Ganador",
     "Listado de Ganadores",
     "Exportar a Excel",
+    "Configuración",
   ];
 
   @override
@@ -80,6 +83,10 @@ class _HomePageState extends State<HomePage> {
               NavigationRailDestination(
                 icon: Icon(Icons.download),
                 label: Text('Exportar Ganadores'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.settings),
+                label: Text('Configuración'),
               ),
             ],
           ),

@@ -129,9 +129,10 @@ class ExportGanadoresScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                 ),
+            SizedBox(height: 10),
             ElevatedButton.icon(
               icon: const Icon(Icons.download),
-              label: const Text("Exportar ganadores a Excel"),
+              label: const Text("Exportar Excel de Ganadores"),
               onPressed:
                   controller.sorteoCerrado.value
                       ? () => controller.exportarConPin(context)
@@ -139,6 +140,19 @@ class ExportGanadoresScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
+              icon: const Icon(Icons.settings_backup_restore),
+              label: const Text("Exportar Excel a directorio predeterminado"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[700],
+                foregroundColor: Colors.white,
+              ),
+              onPressed:
+                  controller.sorteoCerrado.value
+                      ? () => controller.exportarExcelConRutaConfig(context)
+                      : null,
+            ),
+            const SizedBox(height: 16),
+            /*ElevatedButton.icon(
               icon: const Icon(Icons.picture_as_pdf),
               label: const Text("Exportar ganadores a PDF"),
               style: ElevatedButton.styleFrom(
@@ -150,6 +164,19 @@ class ExportGanadoresScreen extends StatelessWidget {
                       ? () => controller.exportarPdf(context)
                       : null,
             ),
+            const SizedBox(height: 12),*/
+            /*ElevatedButton.icon(
+              icon: const Icon(Icons.settings_backup_restore),
+              label: const Text("Exportar PDF a directorio predeterminado"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[700],
+                foregroundColor: Colors.white,
+              ),
+              onPressed:
+                  controller.sorteoCerrado.value
+                      ? () => controller.exportarPdfConRutaConfig(context)
+                      : null,
+            ),*/
             const SizedBox(height: 16),
             if (controller.mensaje.value.isNotEmpty)
               Text(

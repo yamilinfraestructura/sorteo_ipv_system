@@ -502,10 +502,12 @@ class ExportGanadoresController extends GetxController {
     }
   }
 
-  Future<void> exportarConPin(BuildContext context) async {
+  Future<bool> solicitarPinYValidar(BuildContext context) async {
+    final loginCtrl = Get.find<LoginController>();
+    final user = loginCtrl.usuarioLogueado.value;
     final TextEditingController pinController = TextEditingController();
-    String errorPin = '';
     bool autorizado = false;
+    String errorPin = '';
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -520,8 +522,6 @@ class ExportGanadoresController extends GetxController {
                 if (event is RawKeyDownEvent &&
                     (event.logicalKey == LogicalKeyboardKey.enter ||
                         event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                  final loginCtrl = Get.find<LoginController>();
-                  final user = loginCtrl.usuarioLogueado.value;
                   final pinIngresado = pinController.text;
                   final perfil = user?['perfil_user']?.toString() ?? '';
                   final pinHashGuardado = user?['password']?.toString() ?? '';
@@ -545,12 +545,8 @@ class ExportGanadoresController extends GetxController {
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '¿Deseas exportar los ganadores del Barrio "${barrioSeleccionado.value}" y Grupo "${grupoSeleccionado.value}"?',
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Ingresá tu PIN para confirmar:'),
-                    const SizedBox(height: 8),
+                    const Text('Ingresá tu PIN para confirmar la exportación:'),
+                    const SizedBox(height: 12),
                     SizedBox(
                       width: 220,
                       child: Pinput(
@@ -626,8 +622,6 @@ class ExportGanadoresController extends GetxController {
                   ),
                   TextButton(
                     onPressed: () {
-                      final loginCtrl = Get.find<LoginController>();
-                      final user = loginCtrl.usuarioLogueado.value;
                       final pinIngresado = pinController.text;
                       final perfil = user?['perfil_user']?.toString() ?? '';
                       final pinHashGuardado =
@@ -647,8 +641,8 @@ class ExportGanadoresController extends GetxController {
                       }
                     },
                     child: const Text(
-                      'Exportar',
-                      style: TextStyle(color: Colors.green),
+                      'Confirmar',
+                      style: TextStyle(color: Colors.red),
                     ),
                   ),
                 ],
@@ -658,6 +652,368 @@ class ExportGanadoresController extends GetxController {
         );
       },
     );
+    return autorizado;
+  }
+
+  /// Exporta los ganadores filtrados a un archivo Excel usando la ruta de configuración si existe.
+  Future<void> exportarExcelConRutaConfig(BuildContext context) async {
+    final autorizado = await solicitarPinYValidar(context);
+    if (!autorizado) return;
+    if (barrioSeleccionado.value.isEmpty || grupoSeleccionado.value.isEmpty) {
+      mensaje.value = 'Seleccioná un barrio y grupo para exportar.';
+      mostrarMensaje(context, mensaje.value);
+      return;
+    }
+    final db = await DatabaseHelper.database;
+    final ganadores = await db.query(
+      'ganadores',
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+      orderBy: 'position ASC',
+    );
+    if (ganadores.isEmpty) {
+      mostrarMensaje(
+        context,
+        'No hay ganadores registrados para este barrio y grupo.',
+      );
+      return;
+    }
+    final participante = await db.query(
+      'participantes',
+      where: 'id = ?',
+      whereArgs: [ganadores.first['participanteId']],
+    );
+    final p = participante.isNotEmpty ? participante.first : {};
+    final grupo = p['group']?.toString() ?? '';
+    final barrio = p['neighborhood']?.toString() ?? '';
+    final viviendas =
+        p['viviendas'] is int
+            ? p['viviendas']
+            : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
+    final familias =
+        p['familias'] is int
+            ? p['familias']
+            : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
+
+    final excelFile = excel.Excel.createExcel();
+    String defaultSheet = excelFile.getDefaultSheet() ?? '';
+    if (defaultSheet.isNotEmpty && defaultSheet != 'Ganadores') {
+      excelFile.rename(defaultSheet, 'Ganadores');
+    }
+    for (final sheetName in List<String>.from(excelFile.sheets.keys)) {
+      if (sheetName != 'Ganadores') {
+        excelFile.delete(sheetName);
+      }
+    }
+    final sheet = excelFile['Ganadores'];
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue(
+        'Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025',
+      ),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B2"),
+      excel.CellIndex.indexByString("F2"),
+    );
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Grupo: $grupo'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B4"),
+      excel.CellIndex.indexByString("F4"),
+    );
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('$viviendas Viviendas, $familias Familias'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B5"),
+      excel.CellIndex.indexByString("F5"),
+    );
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Barrio: $barrio'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B6"),
+      excel.CellIndex.indexByString("F6"),
+    );
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Posición'),
+      excel.TextCellValue('Nro Orden'),
+      excel.TextCellValue('Documento'),
+      excel.TextCellValue('Apellido Nombre'),
+    ]);
+    for (var col = 1; col <= 4; col++) {
+      final headerCell = sheet.cell(
+        excel.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 9),
+      );
+      headerCell.cellStyle = excel.CellStyle(
+        bold: true,
+        horizontalAlign: excel.HorizontalAlign.Center,
+      );
+    }
+    int rowIndex = 9;
+    for (var ganador in ganadores) {
+      final participante = await db.query(
+        'participantes',
+        where: 'id = ?',
+        whereArgs: [ganador['participanteId']],
+      );
+      if (participante.isNotEmpty) {
+        final p = participante.first;
+        final pos = ganador['position'];
+        final order = p['order_number'];
+        final doc = p['document']?.toString().trim() ?? '';
+        final nombre = p['full_name']?.toString().trim() ?? '';
+        if (pos != null &&
+            pos != 0 &&
+            order != null &&
+            order != 0 &&
+            doc.isNotEmpty &&
+            nombre.isNotEmpty) {
+          final fila = [
+            null,
+            excel.IntCellValue(pos as int),
+            excel.IntCellValue(order as int),
+            excel.TextCellValue(doc),
+            excel.TextCellValue(nombre),
+          ];
+          final tieneDatos = fila
+              .skip(1)
+              .any(
+                (cell) =>
+                    (cell is excel.IntCellValue &&
+                        cell.value != null &&
+                        cell.value != 0) ||
+                    (cell is excel.TextCellValue &&
+                        (cell.value?.toString().trim().isNotEmpty ?? false)),
+              );
+          if (tieneDatos) {
+            for (var col = 0; col < fila.length; col++) {
+              sheet.updateCell(
+                excel.CellIndex.indexByColumnRow(
+                  columnIndex: col,
+                  rowIndex: rowIndex,
+                ),
+                fila[col],
+              );
+            }
+            rowIndex++;
+          }
+        }
+      }
+    }
+    if (sheet.rows.length > 9 &&
+        (sheet.rows[9].every((cell) => cell == null))) {
+      sheet.removeRow(9);
+    }
+    for (var col = 1; col <= 4; col++) {
+      sheet.setColumnWidth(col, col == 4 ? 30.0 : 15.0);
+    }
+    String cleanFileName(String input) {
+      return input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    }
+
+    final safeBarrio = cleanFileName(barrio);
+    final safeGrupo = cleanFileName(grupo);
+    // Obtener la ruta guardada
+    final rutaGuardada = await DatabaseHelper.getSetting('save_path');
+    String? savePath;
+    if (rutaGuardada != null && rutaGuardada.trim().isNotEmpty) {
+      // Crear el directorio si no existe
+      final dir = Directory(rutaGuardada);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      savePath =
+          '${dir.path}/Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx';
+    } else {
+      savePath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Guardar archivo Excel',
+        fileName:
+            'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx',
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+    }
+    if (savePath == null) return;
+    final fileBytes = excelFile.encode();
+    if (fileBytes == null) {
+      mostrarMensaje(context, 'Error al generar archivo Excel.');
+      return;
+    }
+    final file = File(savePath);
+    await file.writeAsBytes(fileBytes);
+    mostrarMensaje(context, 'Archivo exportado correctamente.');
+  }
+
+  /// Exporta los ganadores filtrados a un archivo PDF usando la ruta de configuración si existe.
+  Future<void> exportarPdfConRutaConfig(BuildContext context) async {
+    final autorizado = await solicitarPinYValidar(context);
+    if (!autorizado) return;
+    final db = await DatabaseHelper.database;
+    final ganadores = await db.query(
+      'ganadores',
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+      orderBy: 'position ASC',
+    );
+    final participantes = await db.query(
+      'participantes',
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+    );
+    int viviendas = 0;
+    int familias = 0;
+    String barrio = '';
+    String grupo = '';
+    if (participantes.isNotEmpty) {
+      final p = participantes.first;
+      viviendas =
+          p['viviendas'] is int
+              ? p['viviendas'] as int
+              : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
+      familias =
+          p['familias'] is int
+              ? p['familias'] as int
+              : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
+      barrio = p['neighborhood']?.toString() ?? '';
+      grupo = p['group']?.toString() ?? '';
+    }
+    List<List<dynamic>> filasTabla = [];
+    for (var ganador in ganadores) {
+      final participante = participantes.firstWhere(
+        (p) => p['id'] == ganador['participanteId'],
+        orElse: () => {},
+      );
+      if (participante.isEmpty) continue;
+      final pos = ganador['position'];
+      final order = participante['order_number'];
+      final doc = participante['document']?.toString().trim() ?? '';
+      final nombre = participante['full_name']?.toString().trim() ?? '';
+      if (pos == null ||
+          pos == 0 ||
+          order == null ||
+          order == 0 ||
+          doc.isEmpty ||
+          nombre.isEmpty) {
+        continue;
+      }
+      filasTabla.add([pos, order, doc, nombre]);
+    }
+    final pdf = pw.Document();
+    final robotoFont = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/Roboto-VariableFont_wdth,wght.ttf'),
+    );
+    pdf.addPage(
+      pw.MultiPage(
+        build:
+            (context) => [
+              pw.SizedBox(height: 16),
+              pw.Center(
+                child: pw.Text(
+                  'Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    font: robotoFont,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Grupo: $grupo',
+                style: pw.TextStyle(fontSize: 12, font: robotoFont),
+              ),
+              pw.Text(
+                '$viviendas Viviendas, $familias Familias',
+                style: pw.TextStyle(fontSize: 12, font: robotoFont),
+              ),
+              pw.Text(
+                'Barrio: $barrio',
+                style: pw.TextStyle(fontSize: 12, font: robotoFont),
+              ),
+              pw.SizedBox(height: 18),
+              pw.Table.fromTextArray(
+                headers: [
+                  'Posición',
+                  'Nro Orden',
+                  'Documento',
+                  'Apellido Nombre',
+                ],
+                data: filasTabla,
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  font: robotoFont,
+                ),
+                cellAlignment: pw.Alignment.centerLeft,
+                cellStyle: pw.TextStyle(fontSize: 10, font: robotoFont),
+                headerDecoration: pw.BoxDecoration(color: PdfColors.grey300),
+                border: pw.TableBorder.all(
+                  width: 0.5,
+                  color: PdfColors.grey600,
+                ),
+              ),
+            ],
+      ),
+    );
+    String cleanFileName(String input) {
+      return input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    }
+
+    final safeBarrio = cleanFileName(barrio);
+    final safeGrupo = cleanFileName(grupo);
+    final suggestedFileName =
+        'Ganadores - Barrio $safeBarrio - Grupo $safeGrupo.pdf';
+    final rutaGuardada = await DatabaseHelper.getSetting('save_path');
+    String? output;
+    if (rutaGuardada != null && rutaGuardada.trim().isNotEmpty) {
+      final dir = Directory(rutaGuardada);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      output = '${dir.path}/$suggestedFileName';
+    } else {
+      output = await FilePicker.platform.saveFile(
+        dialogTitle: 'Guardar archivo PDF',
+        fileName: suggestedFileName,
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+    }
+    if (output == null) return;
+    final file = File(output);
+    await file.writeAsBytes(await pdf.save());
+    mostrarMensaje(context, 'Archivo PDF exportado correctamente.');
+  }
+
+  Future<void> exportarConPin(BuildContext context) async {
+    final autorizado = await solicitarPinYValidar(context);
     if (autorizado) {
       await exportarExcel(context);
     } else {

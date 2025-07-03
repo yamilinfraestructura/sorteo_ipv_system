@@ -27,6 +27,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Material App',
       initialBinding: AppBinding(), // 👈 se aplica aquí
       initialRoute: AppRouter.initialRoute,

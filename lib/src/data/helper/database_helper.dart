@@ -74,6 +74,14 @@ class DatabaseHelper {
             )
           ''');
 
+          await db.execute('''
+            CREATE TABLE setting (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              clave TEXT NOT NULL UNIQUE,
+              valor TEXT
+            )
+          ''');
+
           // Insertar usuario por defecto con password encriptado
           final password = '654321';
           final passwordHash = sha256.convert(utf8.encode(password)).toString();
@@ -141,6 +149,15 @@ class DatabaseHelper {
               fecha_baja TEXT DEFAULT '1900-01-01 00:00:00',
               id_user INTEGER,
               FOREIGN KEY (id_user) REFERENCES usuarios(id_user)
+            )
+          ''');
+
+          // Crear tabla setting si no existe
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS setting (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              clave TEXT NOT NULL UNIQUE,
+              valor TEXT
             )
           ''');
 
@@ -231,5 +248,50 @@ class DatabaseHelper {
       });
     }
     await db.delete('ganadores', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Métodos para la tabla setting
+  static Future<void> upsertSetting(String clave, String valor) async {
+    final db = await database;
+    // Intenta actualizar, si no existe inserta
+    int count = await db.update(
+      'setting',
+      {'valor': valor},
+      where: 'clave = ?',
+      whereArgs: [clave],
+    );
+    if (count == 0) {
+      await db.insert('setting', {'clave': clave, 'valor': valor});
+    }
+  }
+
+  static Future<String?> getSetting(String clave) async {
+    final db = await database;
+    final result = await db.query(
+      'setting',
+      where: 'clave = ?',
+      whereArgs: [clave],
+      limit: 1,
+    );
+    if (result.isNotEmpty) {
+      return result.first['valor'] as String?;
+    }
+    return null;
+  }
+
+  static Future<Map<String, String>> getAllSettings() async {
+    final db = await database;
+    final result = await db.query('setting');
+    return {
+      for (var row in result)
+        row['clave'] as String: row['valor'] as String? ?? '',
+    };
+  }
+
+  static Future<void> limpiarDatosPrincipales() async {
+    final db = await database;
+    await db.delete('participantes');
+    await db.delete('ganadores');
+    await db.delete('eliminados');
   }
 }

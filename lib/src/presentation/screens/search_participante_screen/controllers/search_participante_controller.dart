@@ -69,7 +69,6 @@ class SearchParticipanteController extends GetxController {
     final db = await DatabaseHelper.database;
     String? barrio = barrioSeleccionado.value;
     String? grupo = grupoSeleccionado.value;
-    List<Map<String, dynamic>> lista = [];
     // Ganadores activos
     List<Map<String, dynamic>> resultado;
     if (barrio != null &&
@@ -102,6 +101,7 @@ class SearchParticipanteController extends GetxController {
     } else {
       resultado = await db.query('ganadores', orderBy: 'fecha DESC', limit: 10);
     }
+    List<Map<String, dynamic>> activos = [];
     for (var item in resultado) {
       final participanteDb = await db.query(
         'participantes',
@@ -109,7 +109,7 @@ class SearchParticipanteController extends GetxController {
         whereArgs: [item['participanteId']],
       );
       if (participanteDb.isNotEmpty) {
-        lista.add({
+        activos.add({
           ...item,
           'full_name': participanteDb.first['full_name'],
           'document': participanteDb.first['document'],
@@ -163,16 +163,24 @@ class SearchParticipanteController extends GetxController {
         LIMIT 10
       ''');
     }
+    List<Map<String, dynamic>> eliminadosList = [];
     for (var e in eliminados) {
-      lista.add({...e, 'eliminado': true});
+      eliminadosList.add({...e, 'eliminado': true});
     }
-    // Ordenar por fecha (puedes ajustar el criterio si lo deseas)
-    lista.sort((a, b) {
-      final fa = a['eliminado'] ? a['fecha_baja'] ?? '' : a['fecha'] ?? '';
-      final fb = b['eliminado'] ? b['fecha_baja'] ?? '' : b['fecha'] ?? '';
+    // Ordenar activos por fecha (descendente)
+    activos.sort((a, b) {
+      final fa = a['fecha'] ?? '';
+      final fb = b['fecha'] ?? '';
       return (fb as String).compareTo(fa as String);
     });
-    ganadoresRecientes.value = lista;
+    // Ordenar eliminados por fecha_baja (descendente)
+    eliminadosList.sort((a, b) {
+      final fa = a['fecha_baja'] ?? '';
+      final fb = b['fecha_baja'] ?? '';
+      return (fb as String).compareTo(fa as String);
+    });
+    // Unir: activos primero, eliminados al final
+    ganadoresRecientes.value = [...activos, ...eliminadosList];
 
     // Lógica para saber si el sorteo está cerrado (usando viviendas)
     if (barrio != null &&
@@ -233,15 +241,15 @@ class SearchParticipanteController extends GetxController {
       familias = f is int ? f : int.tryParse(f?.toString() ?? '0') ?? 0;
     }
     final posResult = await db.rawQuery(
-      'SELECT MAX(position) as maxPos FROM ganadores WHERE neighborhood = ? AND "group" = ?',
+      'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
       [barrioSeleccionado.value, grupoSeleccionado.value],
     );
     int ultimaPos = 0;
     if (posResult.isNotEmpty) {
       ultimaPos =
-          posResult.first['maxPos'] is int
-              ? posResult.first['maxPos'] as int
-              : int.tryParse(posResult.first['maxPos']?.toString() ?? '0') ?? 0;
+          posResult.first['count'] is int
+              ? posResult.first['count'] as int
+              : int.tryParse(posResult.first['count']?.toString() ?? '0') ?? 0;
     }
     viviendasGrupo.value = viviendas;
     familiasGrupo.value = familias;
@@ -327,7 +335,7 @@ class SearchParticipanteController extends GetxController {
           "No se encontró participante con ese Nro de Orden en el barrio y grupo seleccionados.";
       mostrarAlerta(
         context,
-        "No encontrado",
+        "Fuera de Padrón",
         "No se encontró participante con ese Nro de Orden en el barrio y grupo seleccionados.",
       );
     }
@@ -786,6 +794,7 @@ class SearchParticipanteController extends GetxController {
         final idUser = loginCtrl.usuarioLogueado.value?['id_user'] ?? 0;
         await DatabaseHelper.eliminarGanadorPorId(ganador['id'] as int, idUser);
         await cargarGanadoresRecientes();
+        await cargarInfoGrupo();
         mensaje.value = 'Ganador eliminado correctamente.';
         Get.snackbar(
           'Éxito',
