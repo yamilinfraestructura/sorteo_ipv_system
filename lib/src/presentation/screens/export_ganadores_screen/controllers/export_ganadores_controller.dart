@@ -11,6 +11,10 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
+import 'package:sorteo_ipv_system/src/data/helper/synology_nas_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/ftp_helper.dart';
 
 // Controlador para la pantalla de exportación de ganadores
 class ExportGanadoresController extends GetxController {
@@ -308,10 +312,11 @@ class ExportGanadoresController extends GetxController {
 
     final safeBarrio = cleanFileName(barrio);
     final safeGrupo = cleanFileName(grupo);
+    final fileName =
+        'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx';
     final savePath = await FilePicker.platform.saveFile(
       dialogTitle: 'Guardar archivo Excel',
-      fileName:
-          'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx',
+      fileName: fileName,
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
     );
@@ -322,10 +327,73 @@ class ExportGanadoresController extends GetxController {
       mostrarMensaje(context, 'Error al generar archivo Excel.');
       return;
     }
+    // --- DATOS DEL NAS desde configuración ---
+    final nasHost = await DatabaseHelper.getSetting('nas_host') ?? '';
+    final user = await DatabaseHelper.getSetting('nas_user') ?? '';
+    final password = await DatabaseHelper.getSetting('nas_password') ?? '';
+    // Usar '/IPV' como path de destino para la validación
+    final pathDestinoConfig = await DatabaseHelper.getSetting('nas_path') ?? '';
+    if (nasHost.isEmpty ||
+        user.isEmpty ||
+        password.isEmpty ||
+        pathDestinoConfig.isEmpty) {
+      mostrarMensaje(
+        context,
+        'Configurá los datos del NAS en la pantalla de configuración.',
+      );
+      return;
+    }
+    final nasHelper = SynologyNasHelper(
+      nasHost: nasHost,
+      user: user,
+      password: password,
+    );
+    final sid = await nasHelper.login();
+    if (sid == null) {
+      mostrarMensaje(context, 'Error de autenticación con el NAS.');
+      return;
+    }
+    // --- DEBUG: Tamaño de fileBytes antes de escribir archivo ---
+    print('[NAS DEBUG] fileBytes: \\${fileBytes.length} bytes');
     final file = File(savePath);
+    // --- DEBUG: Antes de escribir archivo ---
+    print('[NAS DEBUG] Archivo a crear: \\${file.path}');
     await file.writeAsBytes(fileBytes);
-    // ignore: use_build_context_synchronously
-    mostrarMensaje(context, 'Archivo exportado correctamente.');
+    // --- DEBUG: Después de escribir archivo ---
+    print('[NAS DEBUG] Archivo local generado:');
+    print('Ruta: \\${file.path}');
+    print('Existe: \\${await file.exists()}');
+    print('Tamaño: \\${await file.length()} bytes');
+    print('Nombre para la API: \\${fileName}');
+    print('Path destino para la API (validación): $pathDestinoConfig');
+
+    // Intentar subir a diferentes paths
+    final pathsAProbar = ['/ganadores', '/IPV', '/', 'IPV'];
+    bool ok = false;
+    for (final path in pathsAProbar) {
+      print('[NAS DEBUG] Intentando subir a $path ...');
+      ok = await nasHelper.uploadFile(
+        sid: sid,
+        pathDestino: path,
+        file: file,
+        fileName: fileName,
+      );
+      if (ok) {
+        print('[NAS DEBUG] Subida exitosa a $path');
+        break;
+      } else {
+        print('[NAS DEBUG] Falló subida a $path');
+      }
+    }
+    await nasHelper.logout(sid);
+    if (ok) {
+      mostrarMensaje(context, '¡Archivo subido correctamente al NAS!');
+    } else {
+      mostrarMensaje(
+        context,
+        'Falló la subida al NAS en todos los paths probados.',
+      );
+    }
   }
 
   /// Limpia el nombre del archivo para evitar caracteres no permitidos en Windows
@@ -866,9 +934,73 @@ class ExportGanadoresController extends GetxController {
       mostrarMensaje(context, 'Error al generar archivo Excel.');
       return;
     }
+    // --- DATOS DEL NAS desde configuración ---
+    final nasHost = await DatabaseHelper.getSetting('nas_host') ?? '';
+    final user = await DatabaseHelper.getSetting('nas_user') ?? '';
+    final password = await DatabaseHelper.getSetting('nas_password') ?? '';
+    // Usar '/IPV' como path de destino para la validación
+    final pathDestinoConfig = await DatabaseHelper.getSetting('nas_path') ?? '';
+    if (nasHost.isEmpty ||
+        user.isEmpty ||
+        password.isEmpty ||
+        pathDestinoConfig.isEmpty) {
+      mostrarMensaje(
+        context,
+        'Configurá los datos del NAS en la pantalla de configuración.',
+      );
+      return;
+    }
+    final nasHelper = SynologyNasHelper(
+      nasHost: nasHost,
+      user: user,
+      password: password,
+    );
+    final sid = await nasHelper.login();
+    if (sid == null) {
+      mostrarMensaje(context, 'Error de autenticación con el NAS.');
+      return;
+    }
+    // --- DEBUG: Tamaño de fileBytes antes de escribir archivo ---
+    print('[NAS DEBUG] fileBytes: \\${fileBytes.length} bytes');
     final file = File(savePath);
+    // --- DEBUG: Antes de escribir archivo ---
+    print('[NAS DEBUG] Archivo a crear: \\${file.path}');
     await file.writeAsBytes(fileBytes);
-    mostrarMensaje(context, 'Archivo exportado correctamente.');
+    // --- DEBUG: Después de escribir archivo ---
+    print('[NAS DEBUG] Archivo local generado:');
+    print('Ruta: \\${file.path}');
+    print('Existe: \\${await file.exists()}');
+    print('Tamaño: \\${await file.length()} bytes');
+    print('Nombre para la API: \\${savePath}');
+    print('Path destino para la API (validación): $pathDestinoConfig');
+
+    // Intentar subir a diferentes paths
+    final pathsAProbar = ['/ganadores', '/IPV', '/', 'IPV'];
+    bool ok = false;
+    for (final path in pathsAProbar) {
+      print('[NAS DEBUG] Intentando subir a $path ...');
+      ok = await nasHelper.uploadFile(
+        sid: sid,
+        pathDestino: path,
+        file: file,
+        fileName: savePath,
+      );
+      if (ok) {
+        print('[NAS DEBUG] Subida exitosa a $path');
+        break;
+      } else {
+        print('[NAS DEBUG] Falló subida a $path');
+      }
+    }
+    await nasHelper.logout(sid);
+    if (ok) {
+      mostrarMensaje(context, '¡Archivo subido correctamente al NAS!');
+    } else {
+      mostrarMensaje(
+        context,
+        'Falló la subida al NAS en todos los paths probados.',
+      );
+    }
   }
 
   /// Exporta los ganadores filtrados a un archivo PDF usando la ruta de configuración si existe.
@@ -1023,6 +1155,538 @@ class ExportGanadoresController extends GetxController {
         backgroundColor: Colors.red.shade100,
         colorText: Colors.red.shade900,
       );
+    }
+  }
+
+  // Agregar función para mostrar mensaje con botón para abrir carpeta
+  void mostrarMensajeConAccion(
+    BuildContext context,
+    String mensaje,
+    String filePath,
+  ) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Exportación completada'),
+            content: Text(mensaje),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  // Abrir la carpeta del archivo (Windows)
+                  try {
+                    final directory = File(filePath).parent.path;
+                    if (Platform.isWindows) {
+                      await Process.run('explorer', [directory]);
+                    } else {
+                      await launchUrl(Uri.file(directory));
+                    }
+                  } catch (_) {}
+                },
+                child: const Text('Abrir carpeta'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  /// Sube el archivo Excel generado al NAS Synology usando la API de File Station
+  Future<void> subirExcelAlNas(BuildContext context) async {
+    if (barrioSeleccionado.value.isEmpty || grupoSeleccionado.value.isEmpty) {
+      mostrarMensaje(context, 'Seleccioná un barrio y grupo para exportar.');
+      return;
+    }
+    final db = await DatabaseHelper.database;
+    final ganadores = await db.query(
+      'ganadores',
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+      orderBy: 'position ASC',
+    );
+    if (ganadores.isEmpty) {
+      mostrarMensaje(
+        context,
+        'No hay ganadores registrados para este barrio y grupo.',
+      );
+      return;
+    }
+    final participante = await db.query(
+      'participantes',
+      where: 'id = ?',
+      whereArgs: [ganadores.first['participanteId']],
+    );
+    final p = participante.isNotEmpty ? participante.first : {};
+    final grupo = p['group']?.toString() ?? '';
+    final barrio = p['neighborhood']?.toString() ?? '';
+    final viviendas =
+        p['viviendas'] is int
+            ? p['viviendas']
+            : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
+    final familias =
+        p['familias'] is int
+            ? p['familias']
+            : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
+
+    // Crear el Excel (igual que en exportarExcel)
+    final excelFile = excel.Excel.createExcel();
+    String defaultSheet = excelFile.getDefaultSheet() ?? '';
+    if (defaultSheet.isNotEmpty && defaultSheet != 'Ganadores') {
+      excelFile.rename(defaultSheet, 'Ganadores');
+    }
+    for (final sheetName in List<String>.from(excelFile.sheets.keys)) {
+      if (sheetName != 'Ganadores') {
+        excelFile.delete(sheetName);
+      }
+    }
+    final sheet = excelFile['Ganadores'];
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue(
+        'Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025',
+      ),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B2"),
+      excel.CellIndex.indexByString("F2"),
+    );
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Grupo: $grupo'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B4"),
+      excel.CellIndex.indexByString("F4"),
+    );
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('$viviendas Viviendas, $familias Familias'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B5"),
+      excel.CellIndex.indexByString("F5"),
+    );
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Barrio: $barrio'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B6"),
+      excel.CellIndex.indexByString("F6"),
+    );
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Posición'),
+      excel.TextCellValue('Nro Orden'),
+      excel.TextCellValue('Documento'),
+      excel.TextCellValue('Apellido Nombre'),
+    ]);
+    for (var col = 1; col <= 4; col++) {
+      final headerCell = sheet.cell(
+        excel.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 9),
+      );
+      headerCell.cellStyle = excel.CellStyle(
+        bold: true,
+        horizontalAlign: excel.HorizontalAlign.Center,
+      );
+    }
+    int rowIndex = 9;
+    for (var ganador in ganadores) {
+      final participante = await db.query(
+        'participantes',
+        where: 'id = ?',
+        whereArgs: [ganador['participanteId']],
+      );
+      if (participante.isNotEmpty) {
+        final p = participante.first;
+        final pos = ganador['position'];
+        final order = p['order_number'];
+        final doc = p['document']?.toString().trim() ?? '';
+        final nombre = p['full_name']?.toString().trim() ?? '';
+        if (pos != null &&
+            pos != 0 &&
+            order != null &&
+            order != 0 &&
+            doc.isNotEmpty &&
+            nombre.isNotEmpty) {
+          final fila = [
+            null,
+            excel.IntCellValue(pos as int),
+            excel.IntCellValue(order as int),
+            excel.TextCellValue(doc),
+            excel.TextCellValue(nombre),
+          ];
+          final tieneDatos = fila
+              .skip(1)
+              .any(
+                (cell) =>
+                    (cell is excel.IntCellValue &&
+                        cell.value != null &&
+                        cell.value != 0) ||
+                    (cell is excel.TextCellValue &&
+                        (cell.value?.toString().trim().isNotEmpty ?? false)),
+              );
+          if (tieneDatos) {
+            for (var col = 0; col < fila.length; col++) {
+              sheet.updateCell(
+                excel.CellIndex.indexByColumnRow(
+                  columnIndex: col,
+                  rowIndex: rowIndex,
+                ),
+                fila[col],
+              );
+            }
+            rowIndex++;
+          }
+        }
+      }
+    }
+    if (sheet.rows.length > 9 &&
+        (sheet.rows[9].every((cell) => cell == null))) {
+      sheet.removeRow(9);
+    }
+    for (var col = 1; col <= 4; col++) {
+      sheet.setColumnWidth(col, col == 4 ? 30.0 : 15.0);
+    }
+    String cleanFileName(String input) {
+      return input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    }
+
+    final safeBarrio = cleanFileName(barrio);
+    final safeGrupo = cleanFileName(grupo);
+    final fileName =
+        'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx';
+    final tempDir = Directory.systemTemp;
+    final fileBytes = excelFile.encode();
+    if (fileBytes == null) {
+      mostrarMensaje(context, 'Error al generar archivo Excel.');
+      return;
+    }
+    // --- DATOS DEL NAS desde configuración ---
+    final nasHost = await DatabaseHelper.getSetting('nas_host') ?? '';
+    final user = await DatabaseHelper.getSetting('nas_user') ?? '';
+    final password = await DatabaseHelper.getSetting('nas_password') ?? '';
+    // Usar '/IPV' como path de destino para la validación
+    final pathDestinoConfig = await DatabaseHelper.getSetting('nas_path') ?? '';
+    if (nasHost.isEmpty ||
+        user.isEmpty ||
+        password.isEmpty ||
+        pathDestinoConfig.isEmpty) {
+      mostrarMensaje(
+        context,
+        'Configurá los datos del NAS en la pantalla de configuración.',
+      );
+      return;
+    }
+    // --- DEBUG: Tamaño de fileBytes antes de escribir archivo ---
+    print('[NAS DEBUG] fileBytes: \\${fileBytes.length} bytes');
+    final file = File('${tempDir.path}/$fileName');
+    // --- DEBUG: Antes de escribir archivo ---
+    print('[NAS DEBUG] Archivo a crear: \\${file.path}');
+    await file.writeAsBytes(fileBytes);
+    // --- DEBUG: Después de escribir archivo ---
+    print('[NAS DEBUG] Archivo local generado:');
+    print('Ruta: \\${file.path}');
+    print('Existe: \\${await file.exists()}');
+    print('Tamaño: \\${await file.length()} bytes');
+    print('Nombre para la API: \\${fileName}');
+    print('Path destino para la API (validación): $pathDestinoConfig');
+
+    final nasHelper = SynologyNasHelper(
+      nasHost: nasHost,
+      user: user,
+      password: password,
+    );
+    final sid = await nasHelper.login();
+    if (sid == null) {
+      mostrarMensaje(context, 'Error de autenticación con el NAS.');
+      return;
+    }
+    // Intentar subir a diferentes paths
+    final pathsAProbar = ['/ganadores', '/IPV', '/', 'IPV'];
+    bool ok = false;
+    for (final path in pathsAProbar) {
+      print('[NAS DEBUG] Intentando subir a $path ...');
+      ok = await nasHelper.uploadFile(
+        sid: sid,
+        pathDestino: path,
+        file: file,
+        fileName: fileName,
+      );
+      if (ok) {
+        print('[NAS DEBUG] Subida exitosa a $path');
+        break;
+      } else {
+        print('[NAS DEBUG] Falló subida a $path');
+      }
+    }
+    await nasHelper.logout(sid);
+    if (ok) {
+      mostrarMensaje(context, '¡Archivo subido correctamente al NAS!');
+    } else {
+      mostrarMensaje(
+        context,
+        'Falló la subida al NAS en todos los paths probados.',
+      );
+    }
+  }
+
+  /// Sube el archivo Excel generado al servidor FTP usando FtpHelper
+  Future<void> subirExcelPorFtp(BuildContext context) async {
+    if (barrioSeleccionado.value.isEmpty || grupoSeleccionado.value.isEmpty) {
+      mostrarMensaje(context, 'Seleccioná un barrio y grupo para exportar.');
+      return;
+    }
+    final db = await DatabaseHelper.database;
+    final ganadores = await db.query(
+      'ganadores',
+      where: 'neighborhood = ? AND "group" = ?',
+      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+      orderBy: 'position ASC',
+    );
+    if (ganadores.isEmpty) {
+      mostrarMensaje(
+        context,
+        'No hay ganadores registrados para este barrio y grupo.',
+      );
+      return;
+    }
+    final participante = await db.query(
+      'participantes',
+      where: 'id = ?',
+      whereArgs: [ganadores.first['participanteId']],
+    );
+    final p = participante.isNotEmpty ? participante.first : {};
+    final grupo = p['group']?.toString() ?? '';
+    final barrio = p['neighborhood']?.toString() ?? '';
+    final viviendas =
+        p['viviendas'] is int
+            ? p['viviendas']
+            : int.tryParse(p['viviendas']?.toString() ?? '0') ?? 0;
+    final familias =
+        p['familias'] is int
+            ? p['familias']
+            : int.tryParse(p['familias']?.toString() ?? '0') ?? 0;
+
+    // Crear el Excel (igual que en exportarExcel)
+    final excelFile = excel.Excel.createExcel();
+    String defaultSheet = excelFile.getDefaultSheet() ?? '';
+    if (defaultSheet.isNotEmpty && defaultSheet != 'Ganadores') {
+      excelFile.rename(defaultSheet, 'Ganadores');
+    }
+    for (final sheetName in List<String>.from(excelFile.sheets.keys)) {
+      if (sheetName != 'Ganadores') {
+        excelFile.delete(sheetName);
+      }
+    }
+    final sheet = excelFile['Ganadores'];
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue(
+        'Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025',
+      ),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B2"),
+      excel.CellIndex.indexByString("F2"),
+    );
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Grupo: $grupo'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B4"),
+      excel.CellIndex.indexByString("F4"),
+    );
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('$viviendas Viviendas, $familias Familias'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B5"),
+      excel.CellIndex.indexByString("F5"),
+    );
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Barrio: $barrio'),
+      null,
+      null,
+      null,
+      null,
+    ]);
+    sheet.merge(
+      excel.CellIndex.indexByString("B6"),
+      excel.CellIndex.indexByString("F6"),
+    );
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([null, null, null, null, null, null]);
+    sheet.appendRow([
+      null,
+      excel.TextCellValue('Posición'),
+      excel.TextCellValue('Nro Orden'),
+      excel.TextCellValue('Documento'),
+      excel.TextCellValue('Apellido Nombre'),
+    ]);
+    for (var col = 1; col <= 4; col++) {
+      final headerCell = sheet.cell(
+        excel.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 9),
+      );
+      headerCell.cellStyle = excel.CellStyle(
+        bold: true,
+        horizontalAlign: excel.HorizontalAlign.Center,
+      );
+    }
+    int rowIndex = 9;
+    for (var ganador in ganadores) {
+      final participante = await db.query(
+        'participantes',
+        where: 'id = ?',
+        whereArgs: [ganador['participanteId']],
+      );
+      if (participante.isNotEmpty) {
+        final p = participante.first;
+        final pos = ganador['position'];
+        final order = p['order_number'];
+        final doc = p['document']?.toString().trim() ?? '';
+        final nombre = p['full_name']?.toString().trim() ?? '';
+        if (pos != null &&
+            pos != 0 &&
+            order != null &&
+            order != 0 &&
+            doc.isNotEmpty &&
+            nombre.isNotEmpty) {
+          final fila = [
+            null,
+            excel.IntCellValue(pos as int),
+            excel.IntCellValue(order as int),
+            excel.TextCellValue(doc),
+            excel.TextCellValue(nombre),
+          ];
+          final tieneDatos = fila
+              .skip(1)
+              .any(
+                (cell) =>
+                    (cell is excel.IntCellValue &&
+                        cell.value != null &&
+                        cell.value != 0) ||
+                    (cell is excel.TextCellValue &&
+                        (cell.value?.toString().trim().isNotEmpty ?? false)),
+              );
+          if (tieneDatos) {
+            for (var col = 0; col < fila.length; col++) {
+              sheet.updateCell(
+                excel.CellIndex.indexByColumnRow(
+                  columnIndex: col,
+                  rowIndex: rowIndex,
+                ),
+                fila[col],
+              );
+            }
+            rowIndex++;
+          }
+        }
+      }
+    }
+    if (sheet.rows.length > 9 &&
+        (sheet.rows[9].every((cell) => cell == null))) {
+      sheet.removeRow(9);
+    }
+    for (var col = 1; col <= 4; col++) {
+      sheet.setColumnWidth(col, col == 4 ? 30.0 : 15.0);
+    }
+    String cleanFileName(String input) {
+      return input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    }
+
+    final safeBarrio = cleanFileName(barrio);
+    final safeGrupo = cleanFileName(grupo);
+    final fileName =
+        'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx';
+    final tempDir = Directory.systemTemp;
+    final fileBytes = excelFile.encode();
+    if (fileBytes == null) {
+      mostrarMensaje(context, 'Error al generar archivo Excel.');
+      return;
+    }
+    final file = File('${tempDir.path}/$fileName');
+    print('[FTP DEBUG] fileBytes: ${fileBytes.length} bytes');
+    print('[FTP DEBUG] Archivo a crear: ${file.path}');
+    await file.writeAsBytes(fileBytes);
+    print('[FTP DEBUG] Archivo local generado:');
+    print('Ruta: ${file.path}');
+    print('Existe: ${await file.exists()}');
+    print('Tamaño: ${await file.length()} bytes');
+    print('Nombre para la API: $fileName');
+
+    // Leer configuración FTP
+    final host = await DatabaseHelper.getSetting('ftp_host') ?? '';
+    final user = await DatabaseHelper.getSetting('ftp_user') ?? '';
+    final password = await DatabaseHelper.getSetting('ftp_password') ?? '';
+    final portStr = await DatabaseHelper.getSetting('ftp_port') ?? '21';
+    final remoteDir = await DatabaseHelper.getSetting('ftp_dir') ?? '/';
+    final useSftp =
+        (await DatabaseHelper.getSetting('ftp_sftp') ?? 'false') == 'true';
+    final port = int.tryParse(portStr) ?? 21;
+    if (host.isEmpty || user.isEmpty || password.isEmpty || remoteDir.isEmpty) {
+      mostrarMensaje(
+        context,
+        'Configurá los datos del FTP en la pantalla de configuración.',
+      );
+      return;
+    }
+    final ftpHelper = FtpHelper(
+      host: host,
+      user: user,
+      password: password,
+      port: port,
+      useSftp: useSftp,
+    );
+    final ok = await ftpHelper.subirArchivo(
+      file: file,
+      remoteDir: remoteDir,
+      remoteFileName: fileName,
+    );
+    if (ok) {
+      mostrarMensaje(context, '¡Archivo subido correctamente por FTP!');
+    } else {
+      mostrarMensaje(context, 'Falló la subida por FTP.');
     }
   }
 }

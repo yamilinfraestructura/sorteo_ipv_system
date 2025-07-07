@@ -70,6 +70,10 @@ class ListGanadoresScreen extends StatelessWidget {
                   onPressed: controller.actualizarLista,
                   icon: const Icon(Icons.refresh),
                   label: const Text("Actualizar"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey[700],
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ],
             ),

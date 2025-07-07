@@ -294,4 +294,45 @@ class DatabaseHelper {
     await db.delete('ganadores');
     await db.delete('eliminados');
   }
+
+  // Métodos para gestión de usuarios
+  static Future<List<Map<String, dynamic>>> obtenerUsuarios() async {
+    final db = await database;
+    return await db.query('usuarios');
+  }
+
+  static Future<bool> eliminarUsuarioPorId(int id) async {
+    final db = await database;
+    // No permitir eliminar el usuario por defecto
+    final usuario = await db.query(
+      'usuarios',
+      where: 'id_user = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (usuario.isNotEmpty &&
+        usuario.first['email_user'] == 'yamilsaad00@gmail.com') {
+      return false;
+    }
+    final count = await db.delete(
+      'usuarios',
+      where: 'id_user = ?',
+      whereArgs: [id],
+    );
+    return count > 0;
+  }
+
+  static Future<bool> actualizarPerfilUsuario(
+    int id,
+    String nuevoPerfil,
+  ) async {
+    final db = await database;
+    final count = await db.update(
+      'usuarios',
+      {'perfil_user': nuevoPerfil},
+      where: 'id_user = ?',
+      whereArgs: [id],
+    );
+    return count > 0;
+  }
 }
