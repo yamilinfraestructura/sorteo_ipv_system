@@ -37,9 +37,18 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.orange,
-        title: Text(
-          'Sorteo oficial de Viviendas del IPV- San Juan 2025',
-          style: TextStyle(color: Colors.white),
+        title: Row(
+          children: [
+            Image.asset('assets/images/logo.png', width: 40, height: 40),
+            const SizedBox(width: 12),
+            const Flexible(
+              child: Text(
+                'Sorteo oficial de Viviendas del IPV- San Juan 2025',
+                style: TextStyle(color: Colors.white),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
         elevation: 3.0,
         actions: [

@@ -82,15 +82,23 @@ class DatabaseHelper {
             )
           ''');
 
-          // Insertar usuario por defecto con password encriptado
-          final password = '654321';
-          final passwordHash = sha256.convert(utf8.encode(password)).toString();
-          await db.insert('usuarios', {
-            'user_name': 'Yamil Saad',
-            'password': passwordHash,
-            'perfil_user': 'Desarrollador',
-            'email_user': 'yamilsaad00@gmail.com',
-          });
+          // Insertar usuario por defecto si no existe
+          final usuarios = await db.query(
+            'usuarios',
+            where: 'email_user = ?',
+            whereArgs: ['yamilsaad00@gmail.com'],
+          );
+          if (usuarios.isEmpty) {
+            final password = '654321';
+            final passwordHash =
+                sha256.convert(utf8.encode(password)).toString();
+            await db.insert('usuarios', {
+              'user_name': 'Yamil Saad',
+              'password': passwordHash,
+              'perfil_user': 'Desarrollador',
+              'email_user': 'yamilsaad00@gmail.com',
+            });
+          }
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           // Agregar columnas id_user si no existen

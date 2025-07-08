@@ -25,6 +25,7 @@ dependencies:
   url_launcher:
   dio: ^5.4.0
   ftpconnect: ^2.0.7
+  flutter_animate: ^4.5.0
 
 dev_dependencies:
   flutter_lints: ^5.0.0

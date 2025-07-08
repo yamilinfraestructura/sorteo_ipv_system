@@ -21,10 +21,10 @@ class LoginScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 40),
-                  Icon(
-                    Icons.verified_user,
-                    size: 80,
-                    color: Colors.orange.shade700,
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 120,
+                    height: 120,
                   ),
                   const SizedBox(height: 24),
                   const Text(
