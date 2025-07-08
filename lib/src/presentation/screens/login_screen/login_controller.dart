@@ -84,9 +84,7 @@ class LoginController extends GetxController {
       }
       // Verificar perfil autorizado
       final perfil = user['perfil_user']?.toString() ?? '';
-      if (!(perfil == 'Desarrollador' ||
-          perfil == 'Ministro' ||
-          perfil == 'Gobernador')) {
+      if (!(perfil == 'Desarrollador' || perfil == 'Administrador')) {
         errorMessage.value =
             'No tienes permisos para registrar nuevos usuarios.';
         isLoading.value = false;

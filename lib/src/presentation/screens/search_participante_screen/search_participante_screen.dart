@@ -2,13 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'controllers/search_participante_controller.dart';
 
-class SearchParticipanteScreen extends StatelessWidget {
+class SearchParticipanteScreen extends StatefulWidget {
   const SearchParticipanteScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<SearchParticipanteController>();
+  State<SearchParticipanteScreen> createState() =>
+      _SearchParticipanteScreenState();
+}
 
+class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
+  late final FocusNode numeroFocusNode;
+  late final TextEditingController numeroController;
+  late final SearchParticipanteController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.find<SearchParticipanteController>();
+    numeroFocusNode = FocusNode();
+    numeroController = controller.numeroController;
+
+    // Observar cambios en barrio/grupo y ganadores recientes para pedir foco
+    controller.barrioSeleccionado.listen((_) => _tryRequestFocus());
+    controller.grupoSeleccionado.listen((_) => _tryRequestFocus());
+    controller.ganadoresRecientes.listen((_) => _tryRequestFocus());
+  }
+
+  void _tryRequestFocus() {
+    if (controller.barrioSeleccionado.value != 'Seleccionar' &&
+        controller.grupoSeleccionado.value != 'Seleccionar') {
+      // Esperar un frame para asegurar que el campo esté habilitado
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        numeroFocusNode.requestFocus();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    numeroFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Obx(
@@ -90,7 +127,8 @@ class SearchParticipanteScreen extends StatelessWidget {
             const SizedBox(height: 20),
             // Campo búsqueda
             TextField(
-              controller: controller.numeroController,
+              controller: numeroController,
+              focusNode: numeroFocusNode,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Ingresá el Número de Sorteo (Nro de Orden)',
@@ -99,14 +137,23 @@ class SearchParticipanteScreen extends StatelessWidget {
               enabled:
                   controller.barrioSeleccionado.value != 'Seleccionar' &&
                   controller.grupoSeleccionado.value != 'Seleccionar',
-              onSubmitted: (_) => controller.buscarParticipante(context),
+              onSubmitted: (_) {
+                controller.buscarParticipante(
+                  context,
+                  onDialogClosed: _tryRequestFocus,
+                );
+                // El foco se volverá a pedir automáticamente por el listener de ganadoresRecientes
+              },
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed:
                   (controller.barrioSeleccionado.value != 'Seleccionar' &&
                           controller.grupoSeleccionado.value != 'Seleccionar')
-                      ? () => controller.buscarParticipante(context)
+                      ? () => controller.buscarParticipante(
+                        context,
+                        onDialogClosed: _tryRequestFocus,
+                      )
                       : null,
               icon: const Icon(Icons.search),
               label: const Text("Buscar participante"),

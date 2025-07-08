@@ -134,9 +134,7 @@ class SettingsController extends GetxController {
                         sha256.convert(utf8.encode(pinIngresado)).toString();
                     if (pinIngresado.length == 6 &&
                         perfil.isNotEmpty &&
-                        (perfil == 'Desarrollador' ||
-                            perfil == 'Ministro' ||
-                            perfil == 'Gobernador') &&
+                        (perfil == 'Desarrollador') &&
                         pinHashIngresado == pinHashGuardado) {
                       autorizado = true;
                       Navigator.pop(context);
@@ -242,9 +240,7 @@ class SettingsController extends GetxController {
                                 .toString();
                         if (pinIngresado.length == 6 &&
                             perfil.isNotEmpty &&
-                            (perfil == 'Desarrollador' ||
-                                perfil == 'Ministro' ||
-                                perfil == 'Gobernador') &&
+                            (perfil == 'Desarrollador') &&
                             pinHashIngresado == pinHashGuardado) {
                           autorizado = true;
                           Navigator.pop(context);
@@ -321,9 +317,7 @@ class SettingsController extends GetxController {
                       sha256.convert(utf8.encode(pinIngresado)).toString();
                   if (pinIngresado.length == 6 &&
                       perfil.isNotEmpty &&
-                      (perfil == 'Desarrollador' ||
-                          perfil == 'Ministro' ||
-                          perfil == 'Gobernador') &&
+                      (perfil == 'Desarrollador') &&
                       pinHashIngresado == pinHashGuardado) {
                     autorizado = true;
                     Navigator.pop(context);
@@ -424,9 +418,7 @@ class SettingsController extends GetxController {
                           sha256.convert(utf8.encode(pinIngresado)).toString();
                       if (pinIngresado.length == 6 &&
                           perfil.isNotEmpty &&
-                          (perfil == 'Desarrollador' ||
-                              perfil == 'Ministro' ||
-                              perfil == 'Gobernador') &&
+                          (perfil == 'Desarrollador') &&
                           pinHashIngresado == pinHashGuardado) {
                         autorizado = true;
                         Navigator.pop(context);

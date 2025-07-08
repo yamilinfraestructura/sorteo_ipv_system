@@ -286,7 +286,10 @@ class SearchParticipanteController extends GetxController {
     await cargarInfoGrupo();
   }
 
-  Future<void> buscarParticipante(BuildContext context) async {
+  Future<void> buscarParticipante(
+    BuildContext context, {
+    VoidCallback? onDialogClosed,
+  }) async {
     if (barrioSeleccionado.value == 'Seleccionar' ||
         grupoSeleccionado.value == 'Seleccionar') {
       mensaje.value = "Seleccioná un barrio y grupo primero.";
@@ -299,6 +302,7 @@ class SearchParticipanteController extends GetxController {
         context,
         "Número inválido",
         "Por favor, ingresa un número de orden válido.",
+        onDialogClosed: onDialogClosed,
       );
       return;
     }
@@ -321,6 +325,7 @@ class SearchParticipanteController extends GetxController {
           context,
           "Ya registrado",
           "Este participante ya ha sido registrado como ganador. Posición Número $pos",
+          onDialogClosed: onDialogClosed,
         );
         participante.value = null;
         mensaje.value = '';
@@ -337,6 +342,7 @@ class SearchParticipanteController extends GetxController {
         context,
         "Fuera de Padrón",
         "No se encontró participante con ese Nro de Orden en el barrio y grupo seleccionados.",
+        onDialogClosed: onDialogClosed,
       );
     }
   }
@@ -344,8 +350,9 @@ class SearchParticipanteController extends GetxController {
   void mostrarAlerta(
     BuildContext context,
     String titulo,
-    String mensajeAlerta,
-  ) {
+    String mensajeAlerta, {
+    VoidCallback? onDialogClosed,
+  }) {
     if (!context.mounted) return;
     final focusNode = FocusNode();
     showDialog(
@@ -361,6 +368,9 @@ class SearchParticipanteController extends GetxController {
                       (event.logicalKey == LogicalKeyboardKey.enter ||
                           event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
                     Navigator.pop(context);
+                    if (onDialogClosed != null) {
+                      onDialogClosed();
+                    }
                   }
                 },
                 child:
@@ -433,7 +443,12 @@ class SearchParticipanteController extends GetxController {
                           content: Text(mensajeAlerta),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                if (onDialogClosed != null) {
+                                  onDialogClosed();
+                                }
+                              },
                               child: const Text("Aceptar"),
                             ),
                           ],
@@ -659,8 +674,7 @@ class SearchParticipanteController extends GetxController {
                   if (pinIngresado.length == 6 &&
                       perfil.isNotEmpty &&
                       (perfil == 'Desarrollador' ||
-                          perfil == 'Ministro' ||
-                          perfil == 'Gobernador') &&
+                          perfil == 'Administrador') &&
                       pinHashIngresado == pinHashGuardado) {
                     eliminado = true;
                     Navigator.pop(context);
@@ -767,8 +781,7 @@ class SearchParticipanteController extends GetxController {
                       if (pinIngresado.length == 6 &&
                           perfil.isNotEmpty &&
                           (perfil == 'Desarrollador' ||
-                              perfil == 'Ministro' ||
-                              perfil == 'Gobernador') &&
+                              perfil == 'Administrador') &&
                           pinHashIngresado == pinHashGuardado) {
                         eliminado = true;
                         Navigator.pop(context);
@@ -812,5 +825,12 @@ class SearchParticipanteController extends GetxController {
         );
       }
     }
+  }
+
+  void reenfocarCampoNumero() {
+    numeroController.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: numeroController.text.length,
+    );
   }
 }

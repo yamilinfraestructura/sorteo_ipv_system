@@ -598,8 +598,7 @@ class ExportGanadoresController extends GetxController {
                   if (pinIngresado.length == 6 &&
                       perfil.isNotEmpty &&
                       (perfil == 'Desarrollador' ||
-                          perfil == 'Ministro' ||
-                          perfil == 'Gobernador') &&
+                          perfil == 'Administrador') &&
                       pinHashIngresado == pinHashGuardado) {
                     autorizado = true;
                     Navigator.pop(context);
@@ -699,8 +698,7 @@ class ExportGanadoresController extends GetxController {
                       if (pinIngresado.length == 6 &&
                           perfil.isNotEmpty &&
                           (perfil == 'Desarrollador' ||
-                              perfil == 'Ministro' ||
-                              perfil == 'Gobernador') &&
+                              perfil == 'Administrador') &&
                           pinHashIngresado == pinHashGuardado) {
                         autorizado = true;
                         Navigator.pop(context);

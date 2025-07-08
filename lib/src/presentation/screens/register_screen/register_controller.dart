@@ -16,20 +16,10 @@ class RegisterController extends GetxController {
   var successMessage = ''.obs;
 
   // Perfiles permitidos para registro
-  final List<String> perfiles = [
-    'Desarrollador',
-    'Ministro',
-    'Gobernador',
-    'Administrador',
-    'Operador',
-  ];
+  final List<String> perfiles = ['Desarrollador', 'Administrador'];
 
   // Perfiles que pueden registrar usuarios
-  final List<String> perfilesAutorizados = [
-    'Desarrollador',
-    'Ministro',
-    'Gobernador',
-  ];
+  final List<String> perfilesAutorizados = ['Desarrollador', 'Administrador'];
 
   Map<String, dynamic>? usuarioAutorizador;
 
