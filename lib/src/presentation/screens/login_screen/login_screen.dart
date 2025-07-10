@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
 import 'login_controller.dart';
+import 'package:flutter/services.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
@@ -52,28 +53,40 @@ class LoginScreen extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 20),
-                  Pinput(
-                    controller: controller.pinController,
-                    length: 6,
-                    obscureText: true,
-                    keyboardType: TextInputType.number,
-                    defaultPinTheme: PinTheme(
-                      width: 48,
-                      height: 56,
-                      textStyle: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.shade200),
-                      ),
-                    ),
-                    onChanged: (_) {
-                      if (controller.errorMessage.value.isNotEmpty)
-                        controller.errorMessage.value = '';
+                  RawKeyboardListener(
+                    focusNode: FocusNode(),
+                    onKey: (event) {
+                      if (event.isKeyPressed(LogicalKeyboardKey.enter) ||
+                          event.isKeyPressed(LogicalKeyboardKey.numpadEnter)) {
+                        if (controller.emailController.text.isNotEmpty &&
+                            controller.pinController.text.length == 6) {
+                          controller.login();
+                        }
+                      }
                     },
+                    child: Pinput(
+                      controller: controller.pinController,
+                      length: 6,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      defaultPinTheme: PinTheme(
+                        width: 48,
+                        height: 56,
+                        textStyle: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                      ),
+                      onChanged: (_) {
+                        if (controller.errorMessage.value.isNotEmpty)
+                          controller.errorMessage.value = '';
+                      },
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (controller.errorMessage.value.isNotEmpty &&

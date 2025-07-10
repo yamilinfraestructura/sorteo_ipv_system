@@ -45,7 +45,9 @@ class LoginController extends GetxController {
       // Guardar usuario logueado en memoria
       usuarioLogueado.value = user;
       // Navegar a home
-      Get.offAllNamed('/home');
+      Get.offAllNamed(
+        '/welcome',
+      ); // Antes: '/home'. Ahora muestra la pantalla de bienvenida intermedia.
     } catch (e) {
       errorMessage.value = 'Error al iniciar sesión.';
     } finally {
@@ -84,9 +86,9 @@ class LoginController extends GetxController {
       }
       // Verificar perfil autorizado
       final perfil = user['perfil_user']?.toString() ?? '';
-      if (!(perfil == 'Desarrollador' || perfil == 'Administrador')) {
+      if (perfil != 'Desarrollador') {
         errorMessage.value =
-            'No tienes permisos para registrar nuevos usuarios.';
+            'No tienes permisos para registrar nuevos usuarios. Solo el perfil Desarrollador puede hacerlo.';
         isLoading.value = false;
         return null;
       }

@@ -130,48 +130,40 @@ class ExportGanadoresScreen extends StatelessWidget {
                   ),
                 ),
             SizedBox(height: 10),
+            // =============================
+            // Los siguientes botones de exportación han sido comentados para dejar solo el de FTP visible.
+            // Para volver a habilitarlos, descomenta el bloque correspondiente.
+            // =============================
+
+            /*
+            // Botón: Exportar Excel de Ganadores
             ElevatedButton.icon(
               icon: const Icon(Icons.download),
               label: const Text("Exportar Excel de Ganadores"),
-              onPressed:
-                  controller.sorteoCerrado.value
-                      ? () => controller.exportarConPin(context)
-                      : null,
+              onPressed: () => controller.exportarExcel(context),
             ),
-            const SizedBox(height: 12),
+
+            // Botón: Exportar Excel a directorio predeterminado
             ElevatedButton.icon(
-              icon: const Icon(Icons.settings_backup_restore),
+              icon: const Icon(Icons.folder),
               label: const Text("Exportar Excel a directorio predeterminado"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[700],
-                foregroundColor: Colors.white,
-              ),
-              onPressed:
-                  controller.sorteoCerrado.value
-                      ? () => controller.exportarExcelConRutaConfig(context)
-                      : null,
+              onPressed: () => controller.exportarExcelConRutaConfig(context),
             ),
-            const SizedBox(height: 16),
+
+            // Botón: Subir Excel al NAS (prueba)
             ElevatedButton.icon(
               icon: const Icon(Icons.cloud_upload),
               label: const Text("Subir Excel al NAS (prueba)"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[700],
-                foregroundColor: Colors.white,
-              ),
-              onPressed:
-                  controller.sorteoCerrado.value
-                      ? () => controller.subirExcelAlNas(context)
-                      : null,
+              onPressed: () => controller.subirExcelAlNas(context),
             ),
-            const SizedBox(height: 16),
+            */
+
+            // Botón principal: Exportar Ganadores (antes: Subir Excel por FTP (prueba))
             ElevatedButton.icon(
-              icon: const Icon(Icons.cloud_upload_outlined),
-              label: const Text("Subir Excel por FTP (prueba)"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[700],
-                foregroundColor: Colors.white,
-              ),
+              icon: const Icon(Icons.cloud_upload),
+              label: const Text("Exportar Ganadores"),
+              // El botón solo se habilita si el sorteo está finalizado y hay barrio y grupo seleccionados
+              // (como antes, usando controller.sorteoCerrado.value)
               onPressed:
                   controller.sorteoCerrado.value
                       ? () => controller.subirExcelPorFtp(context)

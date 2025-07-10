@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Material App',
+      title: 'Sorteo IPV System',
       initialBinding: AppBinding(), // 👈 se aplica aquí
       initialRoute: AppRouter.initialRoute,
       getPages: AppRouter.routes,

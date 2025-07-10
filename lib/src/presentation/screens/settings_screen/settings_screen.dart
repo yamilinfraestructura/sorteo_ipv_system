@@ -262,7 +262,12 @@ class SettingsScreen extends StatelessWidget {
               ),
               initiallyExpanded: false,
               maintainState: true,
-              onExpansionChanged: esDesarrollador ? null : (_) {},
+              // Al expandir, cargar usuarios si esDesarrollador
+              onExpansionChanged: (expanded) {
+                if (expanded && esDesarrollador) {
+                  controller.cargarUsuarios();
+                }
+              },
               trailing:
                   esDesarrollador
                       ? null

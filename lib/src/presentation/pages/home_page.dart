@@ -35,34 +35,91 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.orange,
-        title: Row(
-          children: [
-            Image.asset('assets/images/logo.png', width: 40, height: 40),
-            const SizedBox(width: 12),
-            const Flexible(
-              child: Text(
-                'Sorteo oficial de Viviendas del IPV- San Juan 2025',
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(90), // Aumenta el height
+        child: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 3.0,
+          title: Padding(
+            padding: const EdgeInsets.only(top: 5.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 75,
+                    height: 50,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Sorteo oficial de Viviendas del IPV- San Juan 2025',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Builder(
+                        builder: (context) {
+                          final loginCtrl = Get.find<LoginController>();
+                          final user = loginCtrl.usuarioLogueado.value;
+                          final nombre = user?['user_name']?.toString() ?? '';
+                          return Text(
+                            nombre.isNotEmpty ? nombre : '',
+                            style: TextStyle(
+                              color: Colors.grey[200],
+                              fontSize: 20,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                  ),
+
+                  child: Image.asset(
+                    'assets/images/membrete.jpeg',
+                    width: 1000,
+                    height: 50,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.logout, color: Colors.white),
+              label: const Text(
+                'Cerrar Sesión',
                 style: TextStyle(color: Colors.white),
-                overflow: TextOverflow.ellipsis,
               ),
+              onPressed: () {
+                final loginCtrl = Get.find<LoginController>();
+                loginCtrl.usuarioLogueado.value = null;
+                Get.offAllNamed('/login');
+              },
             ),
           ],
         ),
-        elevation: 3.0,
-        actions: [
-          TextButton.icon(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            label: Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
-            onPressed: () {
-              // Limpiar usuario logueado y navegar a login
-              final loginCtrl = Get.find<LoginController>();
-              loginCtrl.usuarioLogueado.value = null;
-              Get.offAllNamed('/login');
-            },
-          ),
-        ],
       ),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
