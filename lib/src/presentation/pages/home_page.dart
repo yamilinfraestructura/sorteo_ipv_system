@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 
 //Importaciones de archivos
 import 'package:sorteo_ipv_system/src/presentation/screens/screen.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/settings_screen/settings_screen.dart';
+import 'package:sorteo_ipv_system/src/presentation/screens/widgets/membrete_widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -34,41 +36,60 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Inicializar ResponsiveConfig para obtener standarSize
+    ResponsiveConfig.init(context);
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(90), // Aumenta el height
+        preferredSize: Size.fromHeight(
+          ResponsiveConfig.standarSize * 0.07,
+        ), // Equivalente a 90
         child: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 3.0,
+          toolbarHeight:
+              ResponsiveConfig.standarSize * 0.06, // Equivalente a 100
+          backgroundColor: Color(0xffFFF2EB),
+          elevation: 0.0,
           title: Padding(
-            padding: const EdgeInsets.only(top: 5.0),
+            padding: EdgeInsets.only(
+              top: ResponsiveConfig.standarSize * 0.015,
+            ), // Equivalente a 15
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  padding: EdgeInsets.symmetric(
+                    vertical: ResponsiveConfig.standarSize * 0.01,
+                  ), // Equivalente a 10
                   child: Image.asset(
                     'assets/images/logo.png',
-                    width: 75,
-                    height: 50,
+                    width:
+                        ResponsiveConfig.standarSize * 0.06, // Equivalente a 75
+                    height:
+                        ResponsiveConfig.standarSize * 0.04, // Equivalente a 50
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(
+                  width: ResponsiveConfig.standarSize * 0.010,
+                ), // Equivalente a 12
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         'Sorteo oficial de Viviendas del IPV- San Juan 2025',
                         style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 25,
+                          color: Color(0xffD84040),
+                          fontSize:
+                              ResponsiveConfig.standarSize *
+                              0.016, // Equivalente a 25
                           fontWeight: FontWeight.bold,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(
+                        height: ResponsiveConfig.standarSize * 0.004,
+                      ), // Equivalente a 4
                       Builder(
                         builder: (context) {
                           final loginCtrl = Get.find<LoginController>();
@@ -77,8 +98,10 @@ class _HomePageState extends State<HomePage> {
                           return Text(
                             nombre.isNotEmpty ? nombre : '',
                             style: TextStyle(
-                              color: Colors.grey[200],
-                              fontSize: 20,
+                              color: Colors.grey[800],
+                              fontSize:
+                                  ResponsiveConfig.standarSize *
+                                  0.014, // Equivalente a 20
                               fontWeight: FontWeight.w500,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -88,35 +111,38 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.white,
-                  ),
-
-                  child: Image.asset(
-                    'assets/images/membrete.jpeg',
-                    width: 1000,
-                    height: 50,
-                    fit: BoxFit.contain,
-                  ),
-                ),
+                SizedBox(
+                  width: ResponsiveConfig.standarSize * 0.012,
+                ), // Equivalente a 12
               ],
             ),
           ),
           actions: [
-            TextButton.icon(
-              icon: const Icon(Icons.logout, color: Colors.white),
-              label: const Text(
-                'Cerrar Sesión',
-                style: TextStyle(color: Colors.white),
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: TextButton.icon(
+                icon: Icon(
+                  Icons.logout,
+                  color: Color(0xffD84040),
+                  size:
+                      ResponsiveConfig.standarSize *
+                      0.01125, // iconSizeSmall (15) * 0.75 = 11.25
+                ),
+                label: Text(
+                  'Cerrar Sesión',
+                  style: TextStyle(
+                    color: Color(0xffD84040),
+                    fontSize:
+                        ResponsiveConfig.standarSize *
+                        0.009, // subtitleSize (18) * 0.5 = 9
+                  ),
+                ),
+                onPressed: () {
+                  final loginCtrl = Get.find<LoginController>();
+                  loginCtrl.usuarioLogueado.value = null;
+                  Get.offAllNamed('/login');
+                },
               ),
-              onPressed: () {
-                final loginCtrl = Get.find<LoginController>();
-                loginCtrl.usuarioLogueado.value = null;
-                Get.offAllNamed('/login');
-              },
             ),
           ],
         ),
@@ -126,6 +152,9 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           NavigationRail(
+            indicatorShape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
             selectedIndex: selectedIndex,
             onDestinationSelected: (int index) {
               setState(() {
@@ -133,7 +162,7 @@ class _HomePageState extends State<HomePage> {
               });
             },
             labelType: NavigationRailLabelType.all,
-            destinations: const [
+            destinations: [
               NavigationRailDestination(
                 icon: Icon(Icons.upload_file),
                 label: Text('Importar Padrón'),
@@ -156,13 +185,32 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          const VerticalDivider(thickness: 1, width: 10),
+          VerticalDivider(
+            thickness: 1,
+            width: ResponsiveConfig.standarSize * 0.01,
+          ), // Equivalente a 10
           // Área principal
           Expanded(
             child: Column(
               children: [
                 AppBar(
-                  title: Text(_titles[selectedIndex]),
+                  title: Row(
+                    children: [
+                      Text(
+                        _titles[selectedIndex],
+                        style: TextStyle(
+                          fontSize:
+                              ResponsiveConfig.standarSize *
+                              0.016, // Equivalente a 18
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(
+                        width: ResponsiveConfig.standarSize * 0.01,
+                      ), // Equivalente a 10
+                      MembreteWidget(),
+                    ],
+                  ),
                   automaticallyImplyLeading: false,
                 ),
                 Expanded(child: _screens[selectedIndex]),

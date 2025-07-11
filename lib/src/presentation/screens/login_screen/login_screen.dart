@@ -9,6 +9,10 @@ class LoginScreen extends StatelessWidget {
 
   final LoginController controller = Get.put(LoginController());
 
+  // FocusNodes para controlar el foco entre campos
+  final FocusNode emailFocusNode = FocusNode();
+  final FocusNode pinFocusNode = FocusNode();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,9 +37,12 @@ class LoginScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 32),
+                  // Campo de email con onSubmitted para pasar el foco al PIN
                   TextField(
                     controller: controller.emailController,
+                    focusNode: emailFocusNode,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Correo electrónico',
                       border: OutlineInputBorder(
@@ -51,12 +58,20 @@ class LoginScreen extends StatelessWidget {
                       if (controller.errorMessage.value.isNotEmpty)
                         controller.errorMessage.value = '';
                     },
+                    onSubmitted: (_) {
+                      // Al presionar Enter, pasar el foco al campo de PIN
+                      FocusScope.of(context).requestFocus(pinFocusNode);
+                    },
                   ),
                   const SizedBox(height: 20),
+                  // Campo de PIN con shortcut Enter para login
+                  // ignore: deprecated_member_use
                   RawKeyboardListener(
-                    focusNode: FocusNode(),
+                    focusNode: pinFocusNode,
                     onKey: (event) {
+                      // ignore: deprecated_member_use
                       if (event.isKeyPressed(LogicalKeyboardKey.enter) ||
+                          // ignore: deprecated_member_use
                           event.isKeyPressed(LogicalKeyboardKey.numpadEnter)) {
                         if (controller.emailController.text.isNotEmpty &&
                             controller.pinController.text.length == 6) {
@@ -86,6 +101,13 @@ class LoginScreen extends StatelessWidget {
                         if (controller.errorMessage.value.isNotEmpty)
                           controller.errorMessage.value = '';
                       },
+                      onCompleted: (_) {
+                        // Al completar el PIN, disparar el login si el email está completo
+                        if (controller.emailController.text.isNotEmpty &&
+                            controller.pinController.text.length == 6) {
+                          controller.login();
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -114,7 +136,7 @@ class LoginScreen extends StatelessWidget {
                           ),
                           child: const Text(
                             'Ingresar',
-                            style: TextStyle(fontSize: 18),
+                            style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
                         ),
                       ),

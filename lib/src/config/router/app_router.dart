@@ -4,7 +4,7 @@ import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_sc
 import 'package:sorteo_ipv_system/src/presentation/screens/register_screen/register_screen.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/import_padrones_screen/import_padrones_screen.dart';
 import 'package:sorteo_ipv_system/main.dart'; // Para ResponsiveInit
-import 'package:sorteo_ipv_system/src/presentation/screens/screen_splash.dart';
+import 'package:sorteo_ipv_system/src/presentation/screens/splash_screen/screen_splash.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/splash_screen/welcome_screen.dart';
 
 class AppRouter {

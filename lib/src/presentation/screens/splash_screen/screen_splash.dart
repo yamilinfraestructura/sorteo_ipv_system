@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
+import 'package:audioplayers/audioplayers.dart'; // Importa audioplayers
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -10,13 +11,28 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  late final AudioPlayer _audioPlayer; // Declara el AudioPlayer
+
   @override
   void initState() {
     super.initState();
+    _audioPlayer = AudioPlayer();
+    _playWelcomeSound(); // Reproduce el sonido al iniciar
+
     Future.delayed(const Duration(milliseconds: 3000), () {
       // Navegar al login después del splash
       Get.offAllNamed('/login');
     });
+  }
+
+  Future<void> _playWelcomeSound() async {
+    await _audioPlayer.play(AssetSource('sounds/welcome.mp3'));
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose(); // Libera el recurso
+    super.dispose();
   }
 
   @override

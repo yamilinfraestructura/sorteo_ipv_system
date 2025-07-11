@@ -66,14 +66,20 @@ class ImportPadronesController extends GetxController {
       grupoSeleccionado.value = 'Seleccionar';
     }
     if (grupoSeleccionado.value != 'Seleccionar') {
-      await cargarParticipantesBarrioGrupo(barrioSeleccionado.value, grupoSeleccionado.value);
+      await cargarParticipantesBarrioGrupo(
+        barrioSeleccionado.value,
+        grupoSeleccionado.value,
+      );
     } else {
       participantesFiltrados.value = <Map<String, dynamic>>[];
     }
   }
 
   /// Carga los participantes filtrados por barrio y grupo.
-  Future<void> cargarParticipantesBarrioGrupo(String barrio, String grupo) async {
+  Future<void> cargarParticipantesBarrioGrupo(
+    String barrio,
+    String grupo,
+  ) async {
     final db = await DatabaseHelper.database;
     final result = await db.query(
       'participantes',
@@ -104,7 +110,9 @@ class ImportPadronesController extends GetxController {
       return;
     }
     grupoSeleccionado.value = val ?? 'Seleccionar';
-    if (val != null && val != 'Seleccionar' && barrioSeleccionado.value != 'Seleccionar') {
+    if (val != null &&
+        val != 'Seleccionar' &&
+        barrioSeleccionado.value != 'Seleccionar') {
       await cargarParticipantesBarrioGrupo(barrioSeleccionado.value, val);
     } else {
       participantesFiltrados.value = <Map<String, dynamic>>[];
@@ -131,14 +139,18 @@ class ImportPadronesController extends GetxController {
         String viviendasFamilias = rows[4][1]?.value.toString().trim() ?? '';
         int viviendas = 0;
         int familias = 0;
-        final regex = RegExp(r'(\d+)\s*Viviendas?,\s*(\d+)\s*Familias?', caseSensitive: false);
+        final regex = RegExp(
+          r'(\d+)\s*Viviendas?,\s*(\d+)\s*Familias?',
+          caseSensitive: false,
+        );
         final match = regex.firstMatch(viviendasFamilias);
         if (match != null) {
           viviendas = int.tryParse(match.group(1) ?? '') ?? 0;
           familias = int.tryParse(match.group(2) ?? '') ?? 0;
         }
         if (grupo.isEmpty || barrio.isEmpty) {
-          mensaje.value = 'Error: No se encontró el grupo o barrio en el archivo.';
+          mensaje.value =
+              'Error: No se encontró el grupo o barrio en el archivo.';
           return;
         }
         final db = await DatabaseHelper.database;
@@ -161,13 +173,17 @@ class ImportPadronesController extends GetxController {
                     autofocus: true,
                     onKey: (RawKeyEvent event) {
                       if (event is RawKeyDownEvent &&
-                          (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                          (event.logicalKey == LogicalKeyboardKey.enter ||
+                              event.logicalKey ==
+                                  LogicalKeyboardKey.numpadEnter)) {
                         Navigator.pop(context, true);
                       }
                     },
                     child: AlertDialog(
                       title: const Text('Padrón ya importado'),
-                      content: Text('Ya existe un padrón para el barrio "$barrio" y grupo "$grupo". ¿Deseas actualizar los datos con el nuevo archivo?'),
+                      content: Text(
+                        'Ya existe un padrón para el barrio "$barrio" y grupo "$grupo". ¿Deseas actualizar los datos con el nuevo archivo?',
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context, false),
@@ -189,32 +205,36 @@ class ImportPadronesController extends GetxController {
             await showDialog(
               // ignore: use_build_context_synchronously
               context: context,
-              builder: (context) => StatefulBuilder(
-                builder: (context, setState) {
-                  return RawKeyboardListener(
-                    focusNode: focusNode,
-                    autofocus: true,
-                    onKey: (RawKeyEvent event) {
-                      if (event is RawKeyDownEvent &&
-                          (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: AlertDialog(
-                      title: const Text('Importación cancelada'),
-                      content: const Text('El padrón no fue actualizado.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Aceptar'),
+              builder:
+                  (context) => StatefulBuilder(
+                    builder: (context, setState) {
+                      return RawKeyboardListener(
+                        focusNode: focusNode,
+                        autofocus: true,
+                        onKey: (RawKeyEvent event) {
+                          if (event is RawKeyDownEvent &&
+                              (event.logicalKey == LogicalKeyboardKey.enter ||
+                                  event.logicalKey ==
+                                      LogicalKeyboardKey.numpadEnter)) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: AlertDialog(
+                          title: const Text('Importación cancelada'),
+                          content: const Text('El padrón no fue actualizado.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Aceptar'),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                      );
+                    },
+                  ),
             );
-            mensaje.value = 'Importación cancelada. El padrón no fue actualizado.';
+            mensaje.value =
+                'Importación cancelada. El padrón no fue actualizado.';
             return;
           }
           await db.delete(
@@ -226,12 +246,35 @@ class ImportPadronesController extends GetxController {
         List<Map<String, dynamic>> participantes = [];
         for (int i = 8; i < rows.length; i++) {
           final row = rows[i];
-          if (row.length < 5 || row[1] == null) continue;
-          int position = int.tryParse(row[1]?.value.toString() ?? '') ?? 0;
-          int order = int.tryParse(row[2]?.value.toString() ?? '') ?? 0;
-          String documento = row[3]?.value.toString().trim() ?? '';
-          String nombre = row[4]?.value.toString().trim() ?? '';
-          if (documento.isEmpty || nombre.isEmpty) continue;
+          // Validar que la fila tenga al menos los campos requeridos
+          if (row.length < 5) continue;
+          // Extraer y limpiar los campos
+          int position =
+              int.tryParse(row[1]?.value?.toString().trim() ?? '') ?? 0;
+          int order = int.tryParse(row[2]?.value?.toString().trim() ?? '') ?? 0;
+          String? documento = row[3]?.value?.toString().trim();
+          String? nombre = row[4]?.value?.toString().trim();
+          // Si documento o nombre son nulos o solo espacios, ignorar la fila
+          if (documento == null ||
+              nombre == null ||
+              documento.isEmpty ||
+              nombre.isEmpty)
+            continue;
+          // Si todos los campos relevantes están vacíos, ignorar la fila
+          bool todosVacios =
+              ((row[1]?.value == null) ||
+                  (row[1]?.value != null &&
+                      row[1]!.value.toString().trim().isEmpty)) &&
+              ((row[2]?.value == null) ||
+                  (row[2]?.value != null &&
+                      row[2]!.value.toString().trim().isEmpty)) &&
+              ((row[3]?.value == null) ||
+                  (row[3]?.value != null &&
+                      row[3]!.value.toString().trim().isEmpty)) &&
+              ((row[4]?.value == null) ||
+                  (row[4]?.value != null &&
+                      row[4]!.value.toString().trim().isEmpty));
+          if (todosVacios) continue;
           participantes.add({
             'position': position,
             'order_number': order,
@@ -248,17 +291,19 @@ class ImportPadronesController extends GetxController {
           await DatabaseHelper.insertarParticipantesLote(participantes);
           await cargarBarrios();
           // Notificar al controlador de búsqueda para que recargue barrios y grupos
-          final searchController = Get.isRegistered<SearchParticipanteController>()
-              ? Get.find<SearchParticipanteController>()
-              : null;
+          final searchController =
+              Get.isRegistered<SearchParticipanteController>()
+                  ? Get.find<SearchParticipanteController>()
+                  : null;
           if (searchController != null) {
             await searchController.cargarBarrios();
             await searchController.cargarGrupos();
           }
           // Notificar al controlador de ganadores para que recargue barrios y grupos
-          final ganadoresController = Get.isRegistered<ListGanadoresController>()
-              ? Get.find<ListGanadoresController>()
-              : null;
+          final ganadoresController =
+              Get.isRegistered<ListGanadoresController>()
+                  ? Get.find<ListGanadoresController>()
+                  : null;
           if (ganadoresController != null) {
             await ganadoresController.cargarFiltros();
           }
@@ -268,7 +313,8 @@ class ImportPadronesController extends GetxController {
           }
           mensaje.value = 'Participantes importados correctamente.';
         } else {
-          mensaje.value = 'Error: No se encontraron participantes válidos en el archivo.';
+          mensaje.value =
+              'Error: No se encontraron participantes válidos en el archivo.';
         }
       } else {
         mensaje.value = 'Importación cancelada por el usuario.';
