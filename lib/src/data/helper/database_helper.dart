@@ -2,16 +2,25 @@ import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:path_provider/path_provider.dart'; // Agregar path_provider
+import 'dart:io'; // Para Directory
 
 class DatabaseHelper {
   static Database? _db;
+
+  // Obtiene una ruta segura para la base de datos en la carpeta de usuario
+  static Future<String> getDatabasePath() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final path = join(directory.path, 'sorteo.db');
+    print('Ruta de la base de datos SQLite: ' + path);
+    return path;
+  }
 
   static Future<Database> get database async {
     if (_db != null) return _db!;
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
-    String dbPath = await databaseFactoryFfi.getDatabasesPath();
-    String path = join(dbPath, 'sorteo.db');
+    String path = await getDatabasePath();
 
     _db = await databaseFactoryFfi.openDatabase(
       path,
