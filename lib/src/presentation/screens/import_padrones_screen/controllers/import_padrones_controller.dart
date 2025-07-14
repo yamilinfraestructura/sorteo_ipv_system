@@ -153,6 +153,44 @@ class ImportPadronesController extends GetxController {
               'Error: No se encontró el grupo o barrio en el archivo.';
           return;
         }
+        // VALIDACIÓN: viviendas no puede ser mayor que familias
+        if (viviendas > familias) {
+          final focusNode = FocusNode();
+          await showDialog(
+            context: context,
+            builder:
+                (context) => StatefulBuilder(
+                  builder: (context, setState) {
+                    return RawKeyboardListener(
+                      focusNode: focusNode,
+                      autofocus: true,
+                      onKey: (RawKeyEvent event) {
+                        if (event is RawKeyDownEvent &&
+                            (event.logicalKey == LogicalKeyboardKey.enter ||
+                                event.logicalKey ==
+                                    LogicalKeyboardKey.numpadEnter)) {
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: AlertDialog(
+                        title: const Text('Error de validación'),
+                        content: const Text(
+                          'El número de viviendas a sortear supera el número de beneficiarios.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Aceptar'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+          );
+          mensaje.value = 'Importación cancelada: viviendas > beneficiarios.';
+          return;
+        }
         final db = await DatabaseHelper.database;
         final existePadron = await db.query(
           'participantes',
