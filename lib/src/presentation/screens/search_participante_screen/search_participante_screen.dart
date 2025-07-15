@@ -136,7 +136,8 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
               ),
               enabled:
                   controller.barrioSeleccionado.value != 'Seleccionar' &&
-                  controller.grupoSeleccionado.value != 'Seleccionar',
+                  controller.grupoSeleccionado.value != 'Seleccionar' &&
+                  !controller.sorteoCerrado.value,
               onSubmitted: (_) {
                 controller.buscarParticipante(
                   context,

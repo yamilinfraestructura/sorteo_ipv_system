@@ -34,6 +34,7 @@ class ExportGanadoresController extends GetxController {
   // Estado de carga para mostrar spinners
   var isLoading = false.obs;
   var sorteoCerrado = false.obs;
+  var isExporting = false.obs;
 
   @override
   void onInit() {
@@ -1457,508 +1458,524 @@ class ExportGanadoresController extends GetxController {
 
   /// Sube el archivo Excel generado al servidor FTP usando FtpHelper
   Future<void> subirExcelPorFtp(BuildContext context) async {
-    // Paso 0: Autenticación con PIN antes de exportar
-    final loginCtrl = Get.find<LoginController>();
-    final usuarioLogueado = loginCtrl.usuarioLogueado.value;
-    final perfil = usuarioLogueado?['perfil_user']?.toString() ?? '';
-    final pinHashGuardado = usuarioLogueado?['password']?.toString() ?? '';
-    String errorPin = '';
-    final TextEditingController pinController = TextEditingController();
-    bool autorizado = false;
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        final focusNode = FocusNode();
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return RawKeyboardListener(
-              focusNode: focusNode,
-              autofocus: true,
-              onKey: (RawKeyEvent event) async {
-                if (event is RawKeyDownEvent &&
-                    (event.logicalKey == LogicalKeyboardKey.enter ||
-                        event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                  final pinIngresado = pinController.text;
-                  final pinHashIngresado =
-                      sha256.convert(utf8.encode(pinIngresado)).toString();
-                  if (pinIngresado.length == 6 &&
-                      (perfil == 'Administrador' ||
-                          perfil == 'Desarrollador') &&
-                      pinHashIngresado == pinHashGuardado) {
-                    autorizado = true;
-                    Navigator.pop(context);
-                  } else {
-                    setState(() => errorPin = 'PIN o perfil incorrecto');
+    isExporting.value = true;
+    try {
+      // Paso 0: Autenticación con PIN antes de exportar
+      final loginCtrl = Get.find<LoginController>();
+      final usuarioLogueado = loginCtrl.usuarioLogueado.value;
+      final perfil = usuarioLogueado?['perfil_user']?.toString() ?? '';
+      final pinHashGuardado = usuarioLogueado?['password']?.toString() ?? '';
+      String errorPin = '';
+      final TextEditingController pinController = TextEditingController();
+      bool autorizado = false;
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          final focusNode = FocusNode();
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return RawKeyboardListener(
+                focusNode: focusNode,
+                autofocus: true,
+                onKey: (RawKeyEvent event) async {
+                  if (event is RawKeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.enter ||
+                          event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                    final pinIngresado = pinController.text;
+                    final pinHashIngresado =
+                        sha256.convert(utf8.encode(pinIngresado)).toString();
+                    if (pinIngresado.length == 6 &&
+                        (perfil == 'Administrador' ||
+                            perfil == 'Desarrollador') &&
+                        pinHashIngresado == pinHashGuardado) {
+                      autorizado = true;
+                      Navigator.pop(context);
+                    } else {
+                      setState(() => errorPin = 'PIN o perfil incorrecto');
+                    }
                   }
-                }
-              },
-              child: AlertDialog(
-                title: const Text('Autenticación requerida'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Ingrese su PIN para exportar ganadores.'),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: 220,
-                      child: Pinput(
-                        length: 6,
-                        controller: pinController,
-                        obscureText: true,
-                        autofocus: true,
-                        defaultPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            border: Border.all(color: Colors.blue, width: 2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        focusedPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            border: Border.all(
-                              color: Colors.blueAccent,
-                              width: 2.5,
+                },
+                child: AlertDialog(
+                  title: const Text('Autenticación requerida'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Ingrese su PIN para exportar ganadores.'),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: 220,
+                        child: Pinput(
+                          length: 6,
+                          controller: pinController,
+                          obscureText: true,
+                          autofocus: true,
+                          defaultPinTheme: PinTheme(
+                            width: 36,
+                            height: 48,
+                            textStyle: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
                             ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        submittedPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[200],
-                            border: Border.all(
-                              color: Colors.blueAccent,
-                              width: 2.5,
+                            decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              border: Border.all(color: Colors.blue, width: 2),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedPinTheme: PinTheme(
+                            width: 36,
+                            height: 48,
+                            textStyle: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              border: Border.all(
+                                color: Colors.blueAccent,
+                                width: 2.5,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          submittedPinTheme: PinTheme(
+                            width: 36,
+                            height: 48,
+                            textStyle: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[200],
+                              border: Border.all(
+                                color: Colors.blueAccent,
+                                width: 2.5,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onCompleted: (_) {},
+                        ),
+                      ),
+                      if (errorPin.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            errorPin,
+                            style: const TextStyle(color: Colors.red),
                           ),
                         ),
-                        onCompleted: (_) {},
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancelar'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        final pinIngresado = pinController.text;
+                        final pinHashIngresado =
+                            sha256
+                                .convert(utf8.encode(pinIngresado))
+                                .toString();
+                        if (pinIngresado.length == 6 &&
+                            (perfil == 'Administrador' ||
+                                perfil == 'Desarrollador') &&
+                            pinHashIngresado == pinHashGuardado) {
+                          autorizado = true;
+                          Navigator.pop(context);
+                        } else {
+                          setState(() => errorPin = 'PIN o perfil incorrecto');
+                        }
+                      },
+                      child: const Text(
+                        'Confirmar',
+                        style: TextStyle(color: Colors.blue),
                       ),
                     ),
-                    if (errorPin.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          errorPin,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
                   ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      final pinIngresado = pinController.text;
-                      final pinHashIngresado =
-                          sha256.convert(utf8.encode(pinIngresado)).toString();
-                      if (pinIngresado.length == 6 &&
-                          (perfil == 'Administrador' ||
-                              perfil == 'Desarrollador') &&
-                          pinHashIngresado == pinHashGuardado) {
-                        autorizado = true;
-                        Navigator.pop(context);
-                      } else {
-                        setState(() => errorPin = 'PIN o perfil incorrecto');
-                      }
-                    },
-                    child: const Text(
-                      'Confirmar',
-                      style: TextStyle(color: Colors.blue),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-    if (!autorizado) return;
-
-    if ((barrioSeleccionado.value?.isEmpty ?? true) ||
-        (grupoSeleccionado.value?.isEmpty ?? true)) {
-      mostrarMensaje(context, 'Seleccioná un barrio y grupo para exportar.');
-      return;
-    }
-    final db = await DatabaseHelper.database;
-    final ganadores = await db.query(
-      'ganadores',
-      where: 'neighborhood = ? AND "group" = ?',
-      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
-      orderBy: 'position ASC',
-    );
-    if (ganadores.isEmpty) {
-      mostrarMensaje(
-        context,
-        'No hay ganadores registrados para este barrio y grupo.',
+              );
+            },
+          );
+        },
       );
-      return;
-    }
-    final participante = await db.query(
-      'participantes',
-      where: 'id = ?',
-      whereArgs: [ganadores.first['participanteId']],
-    );
-    final participanteData = participante.isNotEmpty ? participante.first : {};
-    final grupo = participanteData['group']?.toString() ?? '';
-    final barrio = participanteData['neighborhood']?.toString() ?? '';
-    final viviendas =
-        participanteData['viviendas'] is int
-            ? participanteData['viviendas']
-            : int.tryParse(participanteData['viviendas']?.toString() ?? '0') ??
-                0;
-    final familias =
-        participanteData['familias'] is int
-            ? participanteData['familias']
-            : int.tryParse(participanteData['familias']?.toString() ?? '0') ??
-                0;
+      if (!autorizado) return;
 
-    // Crear el Excel (igual que en exportarExcel)
-    final excelFile = excel.Excel.createExcel();
-    String defaultSheet = excelFile.getDefaultSheet() ?? '';
-    if (defaultSheet.isNotEmpty && defaultSheet != 'Ganadores') {
-      excelFile.rename(defaultSheet, 'Ganadores');
-    }
-    for (final sheetName in List<String>.from(excelFile.sheets.keys)) {
-      if (sheetName != 'Ganadores') {
-        excelFile.delete(sheetName);
+      if ((barrioSeleccionado.value?.isEmpty ?? true) ||
+          (grupoSeleccionado.value?.isEmpty ?? true)) {
+        mostrarMensaje(context, 'Seleccioná un barrio y grupo para exportar.');
+        return;
       }
-    }
-    final sheet = excelFile['Ganadores'];
-    sheet.appendRow([null, null, null, null, null, null]);
-    sheet.appendRow([
-      null,
-      excel.TextCellValue(
-        'Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025',
-      ),
-      null,
-      null,
-      null,
-      null,
-    ]);
-    sheet.merge(
-      excel.CellIndex.indexByString("B2"),
-      excel.CellIndex.indexByString("F2"),
-    );
-    sheet.appendRow([null, null, null, null, null, null]);
-    sheet.appendRow([
-      null,
-      excel.TextCellValue('Grupo: $grupo'),
-      null,
-      null,
-      null,
-      null,
-    ]);
-    sheet.merge(
-      excel.CellIndex.indexByString("B4"),
-      excel.CellIndex.indexByString("F4"),
-    );
-    sheet.appendRow([
-      null,
-      excel.TextCellValue('$viviendas Viviendas, $familias Familias'),
-      null,
-      null,
-      null,
-      null,
-    ]);
-    sheet.merge(
-      excel.CellIndex.indexByString("B5"),
-      excel.CellIndex.indexByString("F5"),
-    );
-    sheet.appendRow([
-      null,
-      excel.TextCellValue('Barrio: $barrio'),
-      null,
-      null,
-      null,
-      null,
-    ]);
-    sheet.merge(
-      excel.CellIndex.indexByString("B6"),
-      excel.CellIndex.indexByString("F6"),
-    );
-    sheet.appendRow([null, null, null, null, null, null]);
-    sheet.appendRow([null, null, null, null, null, null]);
-    sheet.appendRow([
-      null,
-      excel.TextCellValue('Posición'),
-      excel.TextCellValue('Nro Orden'),
-      excel.TextCellValue('Documento'),
-      excel.TextCellValue('Apellido Nombre'),
-    ]);
-    for (var col = 1; col <= 4; col++) {
-      final headerCell = sheet.cell(
-        excel.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 9),
+      final db = await DatabaseHelper.database;
+      final ganadores = await db.query(
+        'ganadores',
+        where: 'neighborhood = ? AND "group" = ?',
+        whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+        orderBy: 'position ASC',
       );
-      headerCell.cellStyle = excel.CellStyle(
-        bold: true,
-        horizontalAlign: excel.HorizontalAlign.Center,
-      );
-    }
-    int rowIndex = 9;
-    for (var ganador in ganadores) {
+      if (ganadores.isEmpty) {
+        mostrarMensaje(
+          context,
+          'No hay ganadores registrados para este barrio y grupo.',
+        );
+        return;
+      }
       final participante = await db.query(
         'participantes',
         where: 'id = ?',
-        whereArgs: [ganador['participanteId']],
+        whereArgs: [ganadores.first['participanteId']],
       );
-      if (participante.isNotEmpty) {
-        final participanteData = participante.first;
-        final pos = ganador['position'];
-        final order = participanteData['order_number'];
-        final doc = participanteData['document']?.toString().trim() ?? '';
-        final nombre = participanteData['full_name']?.toString().trim() ?? '';
-        if (pos != null &&
-            pos != 0 &&
-            order != null &&
-            order != 0 &&
-            doc.isNotEmpty &&
-            nombre.isNotEmpty) {
-          final fila = [
-            null,
-            excel.IntCellValue(pos as int),
-            excel.IntCellValue(order as int),
-            excel.TextCellValue(doc),
-            excel.TextCellValue(nombre),
-          ];
-          final tieneDatos = fila
-              .skip(1)
-              .any(
-                (cell) =>
-                    (cell is excel.IntCellValue &&
-                        cell.value != null &&
-                        cell.value != 0) ||
-                    (cell is excel.TextCellValue &&
-                        (cell.value?.toString().trim().isNotEmpty ?? false)),
-              );
-          if (tieneDatos) {
-            for (var col = 0; col < fila.length; col++) {
-              sheet.updateCell(
-                excel.CellIndex.indexByColumnRow(
-                  columnIndex: col,
-                  rowIndex: rowIndex,
-                ),
-                fila[col],
-              );
+      final participanteData =
+          participante.isNotEmpty ? participante.first : {};
+      final grupo = participanteData['group']?.toString() ?? '';
+      final barrio = participanteData['neighborhood']?.toString() ?? '';
+      final viviendas =
+          participanteData['viviendas'] is int
+              ? participanteData['viviendas']
+              : int.tryParse(
+                    participanteData['viviendas']?.toString() ?? '0',
+                  ) ??
+                  0;
+      final familias =
+          participanteData['familias'] is int
+              ? participanteData['familias']
+              : int.tryParse(participanteData['familias']?.toString() ?? '0') ??
+                  0;
+
+      // Crear el Excel (igual que en exportarExcel)
+      final excelFile = excel.Excel.createExcel();
+      String defaultSheet = excelFile.getDefaultSheet() ?? '';
+      if (defaultSheet.isNotEmpty && defaultSheet != 'Ganadores') {
+        excelFile.rename(defaultSheet, 'Ganadores');
+      }
+      for (final sheetName in List<String>.from(excelFile.sheets.keys)) {
+        if (sheetName != 'Ganadores') {
+          excelFile.delete(sheetName);
+        }
+      }
+      final sheet = excelFile['Ganadores'];
+      sheet.appendRow([null, null, null, null, null, null]);
+      sheet.appendRow([
+        null,
+        excel.TextCellValue(
+          'Padrones definitivos - SORTEO PROV. DE VIVIENDAS–SAN JUAN 2025',
+        ),
+        null,
+        null,
+        null,
+        null,
+      ]);
+      sheet.merge(
+        excel.CellIndex.indexByString("B2"),
+        excel.CellIndex.indexByString("F2"),
+      );
+      sheet.appendRow([null, null, null, null, null, null]);
+      sheet.appendRow([
+        null,
+        excel.TextCellValue('Grupo: $grupo'),
+        null,
+        null,
+        null,
+        null,
+      ]);
+      sheet.merge(
+        excel.CellIndex.indexByString("B4"),
+        excel.CellIndex.indexByString("F4"),
+      );
+      sheet.appendRow([
+        null,
+        excel.TextCellValue('$viviendas Viviendas, $familias Familias'),
+        null,
+        null,
+        null,
+        null,
+      ]);
+      sheet.merge(
+        excel.CellIndex.indexByString("B5"),
+        excel.CellIndex.indexByString("F5"),
+      );
+      sheet.appendRow([
+        null,
+        excel.TextCellValue('Barrio: $barrio'),
+        null,
+        null,
+        null,
+        null,
+      ]);
+      sheet.merge(
+        excel.CellIndex.indexByString("B6"),
+        excel.CellIndex.indexByString("F6"),
+      );
+      sheet.appendRow([null, null, null, null, null, null]);
+      sheet.appendRow([null, null, null, null, null, null]);
+      sheet.appendRow([
+        null,
+        excel.TextCellValue('Posición'),
+        excel.TextCellValue('Nro Orden'),
+        excel.TextCellValue('Documento'),
+        excel.TextCellValue('Apellido Nombre'),
+      ]);
+      for (var col = 1; col <= 4; col++) {
+        final headerCell = sheet.cell(
+          excel.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 9),
+        );
+        headerCell.cellStyle = excel.CellStyle(
+          bold: true,
+          horizontalAlign: excel.HorizontalAlign.Center,
+        );
+      }
+      int rowIndex = 9;
+      for (var ganador in ganadores) {
+        final participante = await db.query(
+          'participantes',
+          where: 'id = ?',
+          whereArgs: [ganador['participanteId']],
+        );
+        if (participante.isNotEmpty) {
+          final participanteData = participante.first;
+          final pos = ganador['position'];
+          final order = participanteData['order_number'];
+          final doc = participanteData['document']?.toString().trim() ?? '';
+          final nombre = participanteData['full_name']?.toString().trim() ?? '';
+          if (pos != null &&
+              pos != 0 &&
+              order != null &&
+              order != 0 &&
+              doc.isNotEmpty &&
+              nombre.isNotEmpty) {
+            final fila = [
+              null,
+              excel.IntCellValue(pos as int),
+              excel.IntCellValue(order as int),
+              excel.TextCellValue(doc),
+              excel.TextCellValue(nombre),
+            ];
+            final tieneDatos = fila
+                .skip(1)
+                .any(
+                  (cell) =>
+                      (cell is excel.IntCellValue &&
+                          cell.value != null &&
+                          cell.value != 0) ||
+                      (cell is excel.TextCellValue &&
+                          (cell.value?.toString().trim().isNotEmpty ?? false)),
+                );
+            if (tieneDatos) {
+              for (var col = 0; col < fila.length; col++) {
+                sheet.updateCell(
+                  excel.CellIndex.indexByColumnRow(
+                    columnIndex: col,
+                    rowIndex: rowIndex,
+                  ),
+                  fila[col],
+                );
+              }
+              rowIndex++;
             }
-            rowIndex++;
           }
         }
       }
-    }
-    if (sheet.rows.length > 9 &&
-        (sheet.rows[9].every((cell) => cell == null))) {
-      sheet.removeRow(9);
-    }
-    for (var col = 1; col <= 4; col++) {
-      sheet.setColumnWidth(col, col == 4 ? 30.0 : 15.0);
-    }
-    String cleanFileName(String input) {
-      return input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-    }
-
-    final safeBarrio = cleanFileName(barrio);
-    final safeGrupo = cleanFileName(grupo);
-    final fileName =
-        'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx';
-    final tempDir = Directory.systemTemp;
-    final fileBytes = excelFile.encode();
-    if (fileBytes == null) {
-      mostrarMensaje(context, 'Error al generar archivo Excel.');
-      return;
-    }
-    final file = File('${tempDir.path}/$fileName');
-    print('[FTP DEBUG] fileBytes: ${fileBytes.length} bytes');
-    print('[FTP DEBUG] Archivo a crear: ${file.path}');
-    await file.writeAsBytes(fileBytes);
-    print('[FTP DEBUG] Archivo local generado:');
-    print('Ruta: ${file.path}');
-    print('Existe: ${await file.exists()}');
-    print('Tamaño: ${await file.length()} bytes');
-    print('Nombre para la API: $fileName');
-
-    // Paso extra: Validar cupo de viviendas antes de exportar
-    // 1. Obtener el número de viviendas para el barrio y grupo seleccionados
-    final participanteCupo = await db.query(
-      'participantes',
-      where: 'neighborhood = ? AND "group" = ?',
-      whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
-      limit: 1,
-    );
-    final viviendasCupo =
-        participanteCupo.isNotEmpty
-            ? (participanteCupo.first['viviendas'] is int
-                ? participanteCupo.first['viviendas'] as int
-                : int.tryParse(
-                      participanteCupo.first['viviendas']?.toString() ?? '0',
-                    ) ??
-                    0)
-            : 0;
-    // 2. Consultar en Supabase cuántos ganadores ya existen para ese barrio y grupo
-    int ganadoresSupabaseCount = 0;
-    try {
-      final response = await dio.get(
-        '/ganadores',
-        queryParameters: {
-          'neighborhood': 'eq.${barrioSeleccionado.value}',
-          'grupo_barrio': 'eq.${grupoSeleccionado.value}',
-          'select': 'id',
-        },
-      );
-      if (response.statusCode == 200 && response.data is List) {
-        ganadoresSupabaseCount = (response.data as List).length;
+      if (sheet.rows.length > 9 &&
+          (sheet.rows[9].every((cell) => cell == null))) {
+        sheet.removeRow(9);
       }
-    } catch (e) {
-      mostrarAlerta(
-        context,
-        'No se pudo validar el cupo de ganadores en Supabase. Intenta de nuevo.',
-        exito: false,
-      );
-      return;
-    }
-    // 3. Sumar los ganadores a exportar
-    final totalGanadores = ganadoresSupabaseCount + ganadores.length;
-    if (totalGanadores > viviendasCupo) {
-      mostrarAlerta(
-        context,
-        'El grupo del barrio elegido ya completó el sorteo. No se pueden registrar más ganadores (Cupo: $viviendasCupo, ya registrados: $ganadoresSupabaseCount).',
-        exito: false,
-      );
-      return;
-    }
+      for (var col = 1; col <= 4; col++) {
+        sheet.setColumnWidth(col, col == 4 ? 30.0 : 15.0);
+      }
+      String cleanFileName(String input) {
+        return input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+      }
 
-    // Leer configuración FTP
-    final host = await DatabaseHelper.getSetting('ftp_host') ?? '';
-    final user = await DatabaseHelper.getSetting('ftp_user') ?? '';
-    final password = await DatabaseHelper.getSetting('ftp_password') ?? '';
-    final portStr = await DatabaseHelper.getSetting('ftp_port') ?? '21';
-    final remoteDir = await DatabaseHelper.getSetting('ftp_dir') ?? '/';
-    final useSftp =
-        (await DatabaseHelper.getSetting('ftp_sftp') ?? 'false') == 'true';
-    final port = int.tryParse(portStr) ?? 21;
-    if (host.isEmpty || user.isEmpty || password.isEmpty || remoteDir.isEmpty) {
-      mostrarMensaje(
-        context,
-        'Configurá los datos del FTP en la pantalla de configuración.',
-      );
-      return;
-    }
-    final ftpHelper = FtpHelper(
-      host: host,
-      user: user,
-      password: password,
-      port: port,
-      useSftp: useSftp,
-    );
-    final ok = await ftpHelper.subirArchivo(
-      file: file,
-      remoteDir: remoteDir,
-      remoteFileName: fileName,
-    );
-    if (ok) {
-      mostrarMensaje(context, '¡Archivo subido correctamente por FTP!');
-    } else {
-      mostrarMensaje(context, 'Falló la subida por FTP.');
-    }
+      final safeBarrio = cleanFileName(barrio);
+      final safeGrupo = cleanFileName(grupo);
+      final fileName =
+          'Barrio $safeBarrio - Grupo $safeGrupo - Definitivo para importar Ganadores.xlsx';
+      final tempDir = Directory.systemTemp;
+      final fileBytes = excelFile.encode();
+      if (fileBytes == null) {
+        mostrarMensaje(context, 'Error al generar archivo Excel.');
+        return;
+      }
+      final file = File('${tempDir.path}/$fileName');
+      print('[FTP DEBUG] fileBytes: ${fileBytes.length} bytes');
+      print('[FTP DEBUG] Archivo a crear: ${file.path}');
+      await file.writeAsBytes(fileBytes);
+      print('[FTP DEBUG] Archivo local generado:');
+      print('Ruta: ${file.path}');
+      print('Existe: ${await file.exists()}');
+      print('Tamaño: ${await file.length()} bytes');
+      print('Nombre para la API: $fileName');
 
-    // Paso 2: Respaldar en Supabase
-    // Preparar los datos de ganadores para Supabase
-    final ganadoresSupabase = <Map<String, dynamic>>[];
-    for (var ganador in ganadores) {
-      final participante = await db.query(
+      // Paso extra: Validar cupo de viviendas antes de exportar
+      // 1. Obtener el número de viviendas para el barrio y grupo seleccionados
+      final participanteCupo = await db.query(
         'participantes',
-        where: 'id = ?',
-        whereArgs: [ganador['participanteId']],
+        where: 'neighborhood = ? AND "group" = ?',
+        whereArgs: [barrioSeleccionado.value, grupoSeleccionado.value],
+        limit: 1,
       );
-      if (participante.isNotEmpty) {
-        final participanteData = participante.first;
-        ganadoresSupabase.add({
-          'participanteId':
-              ganador['participanteId'] is int
-                  ? ganador['participanteId']
-                  : int.tryParse(ganador['participanteId'].toString()) ?? 0,
-          'fecha':
-              ganador['fecha']?.toString() ?? DateTime.now().toIso8601String(),
-          'neighborhood': participanteData['neighborhood']?.toString() ?? '',
-          'grupo_barrio': participanteData['group']?.toString() ?? '',
-          'position':
-              ganador['position'] is int
-                  ? ganador['position']
-                  : int.tryParse(ganador['position'].toString()) ?? 0,
-          'order_number':
-              participanteData['order_number'] is int
-                  ? participanteData['order_number']
-                  : int.tryParse(participanteData['order_number'].toString()) ??
-                      0,
-          'document': participanteData['document']?.toString() ?? '',
-          'full_name': participanteData['full_name']?.toString() ?? '',
-          'id_user':
-              ganador['id_user'] is int
-                  ? ganador['id_user']
-                  : int.tryParse(ganador['id_user'].toString()) ?? 0,
-        });
-      }
-    }
-    final respaldoOk = await respaldarGanadoresEnSupabase(ganadoresSupabase);
-    if (respaldoOk) {
-      mostrarMensaje(context, '¡Ganadores respaldados en Supabase!');
-    } else {
-      mostrarMensaje(context, 'Falló el respaldo en Supabase.');
-    }
-
-    // Paso 3: Guardado local (selección de directorio)
-    final savePath = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Selecciona una carpeta para guardar el Excel',
-    );
-    if (savePath != null && savePath is String) {
-      final localFile = File(p.join(savePath, fileName));
+      final viviendasCupo =
+          participanteCupo.isNotEmpty
+              ? (participanteCupo.first['viviendas'] is int
+                  ? participanteCupo.first['viviendas'] as int
+                  : int.tryParse(
+                        participanteCupo.first['viviendas']?.toString() ?? '0',
+                      ) ??
+                      0)
+              : 0;
+      // 2. Consultar en Supabase cuántos ganadores ya existen para ese barrio y grupo
+      int ganadoresSupabaseCount = 0;
       try {
-        await localFile.writeAsBytes(fileBytes);
-        mostrarAlerta(
-          context,
-          'Archivo guardado localmente en: ${localFile.path}',
-          exito: true,
+        final response = await dio.get(
+          '/ganadores',
+          queryParameters: {
+            'neighborhood': 'eq.${barrioSeleccionado.value}',
+            'grupo_barrio': 'eq.${grupoSeleccionado.value}',
+            'select': 'id',
+          },
         );
+        if (response.statusCode == 200 && response.data is List) {
+          ganadoresSupabaseCount = (response.data as List).length;
+        }
       } catch (e) {
         mostrarAlerta(
           context,
-          'No se pudo guardar el archivo porque está abierto en otro programa o en uso.\nPor favor, ciérralo e intenta nuevamente.',
+          'No se pudo validar el cupo de ganadores en Supabase. Intenta de nuevo.',
+          exito: false,
+        );
+        return;
+      }
+      // 3. Sumar los ganadores a exportar
+      final totalGanadores = ganadoresSupabaseCount + ganadores.length;
+      if (totalGanadores > viviendasCupo) {
+        mostrarAlerta(
+          context,
+          'El grupo del barrio elegido ya completó el sorteo. No se pueden registrar más ganadores (Cupo: $viviendasCupo, ya registrados: $ganadoresSupabaseCount).',
+          exito: false,
+        );
+        return;
+      }
+
+      // Leer configuración FTP
+      final host = await DatabaseHelper.getSetting('ftp_host') ?? '';
+      final user = await DatabaseHelper.getSetting('ftp_user') ?? '';
+      final password = await DatabaseHelper.getSetting('ftp_password') ?? '';
+      final portStr = await DatabaseHelper.getSetting('ftp_port') ?? '21';
+      final remoteDir = await DatabaseHelper.getSetting('ftp_dir') ?? '/';
+      final useSftp =
+          (await DatabaseHelper.getSetting('ftp_sftp') ?? 'false') == 'true';
+      final port = int.tryParse(portStr) ?? 21;
+      if (host.isEmpty ||
+          user.isEmpty ||
+          password.isEmpty ||
+          remoteDir.isEmpty) {
+        mostrarMensaje(
+          context,
+          'Configurá los datos del FTP en la pantalla de configuración.',
+        );
+        return;
+      }
+      final ftpHelper = FtpHelper(
+        host: host,
+        user: user,
+        password: password,
+        port: port,
+        useSftp: useSftp,
+      );
+      final ok = await ftpHelper.subirArchivo(
+        file: file,
+        remoteDir: remoteDir,
+        remoteFileName: fileName,
+      );
+      if (ok) {
+        mostrarMensaje(context, '¡Archivo subido correctamente por FTP!');
+      } else {
+        mostrarMensaje(context, 'Falló la subida por FTP.');
+      }
+
+      // Paso 2: Respaldar en Supabase
+      // Preparar los datos de ganadores para Supabase
+      final ganadoresSupabase = <Map<String, dynamic>>[];
+      for (var ganador in ganadores) {
+        final participante = await db.query(
+          'participantes',
+          where: 'id = ?',
+          whereArgs: [ganador['participanteId']],
+        );
+        if (participante.isNotEmpty) {
+          final participanteData = participante.first;
+          ganadoresSupabase.add({
+            'participanteId':
+                ganador['participanteId'] is int
+                    ? ganador['participanteId']
+                    : int.tryParse(ganador['participanteId'].toString()) ?? 0,
+            'fecha':
+                ganador['fecha']?.toString() ??
+                DateTime.now().toIso8601String(),
+            'neighborhood': participanteData['neighborhood']?.toString() ?? '',
+            'grupo_barrio': participanteData['group']?.toString() ?? '',
+            'position':
+                ganador['position'] is int
+                    ? ganador['position']
+                    : int.tryParse(ganador['position'].toString()) ?? 0,
+            'order_number':
+                participanteData['order_number'] is int
+                    ? participanteData['order_number']
+                    : int.tryParse(
+                          participanteData['order_number'].toString(),
+                        ) ??
+                        0,
+            'document': participanteData['document']?.toString() ?? '',
+            'full_name': participanteData['full_name']?.toString() ?? '',
+            'id_user':
+                ganador['id_user'] is int
+                    ? ganador['id_user']
+                    : int.tryParse(ganador['id_user'].toString()) ?? 0,
+          });
+        }
+      }
+      final respaldoOk = await respaldarGanadoresEnSupabase(ganadoresSupabase);
+      if (respaldoOk) {
+        mostrarMensaje(context, '¡Ganadores respaldados en Supabase!');
+      } else {
+        mostrarMensaje(context, 'Falló el respaldo en Supabase.');
+      }
+
+      // Paso 3: Guardado local (selección de directorio)
+      final savePath = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Selecciona una carpeta para guardar el Excel',
+      );
+      if (savePath != null && savePath is String) {
+        final localFile = File(p.join(savePath, fileName));
+        try {
+          await localFile.writeAsBytes(fileBytes);
+          mostrarAlerta(
+            context,
+            'Archivo guardado localmente en: ${localFile.path}',
+            exito: true,
+          );
+        } catch (e) {
+          mostrarAlerta(
+            context,
+            'No se pudo guardar el archivo porque está abierto en otro programa o en uso.\nPor favor, ciérralo e intenta nuevamente.',
+            exito: false,
+          );
+        }
+      } else {
+        mostrarAlerta(
+          context,
+          'No se seleccionó carpeta para guardado local.',
           exito: false,
         );
       }
-    } else {
-      mostrarAlerta(
-        context,
-        'No se seleccionó carpeta para guardado local.',
-        exito: false,
-      );
+    } finally {
+      isExporting.value = false;
     }
   }
 

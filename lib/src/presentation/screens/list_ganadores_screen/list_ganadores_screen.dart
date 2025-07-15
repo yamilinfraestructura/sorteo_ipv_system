@@ -100,17 +100,19 @@ class ListGanadoresScreen extends StatelessWidget {
                 ),
               ),
             Expanded(
-              child:
-                  controller.isLoading.value
-                      ? const Center(child: CircularProgressIndicator())
-                      : controller.ganadores.isEmpty
-                      ? const Center(
-                        child: Text("No hay ganadores registrados."),
-                      )
-                      : GanadoresListComponent(
-                        ganadores: controller.ganadores,
-                        sorteoCerrado: controller.sorteoCerrado.value,
-                      ),
+              child: Obx(
+                () =>
+                    controller.isLoading.value
+                        ? const Center(child: CircularProgressIndicator())
+                        : controller.ganadores.isEmpty
+                        ? const Center(
+                          child: Text("No hay ganadores registrados."),
+                        )
+                        : GanadoresListComponent(
+                          ganadores: controller.ganadores,
+                          sorteoCerrado: controller.sorteoCerrado.value,
+                        ),
+              ),
             ),
           ],
         ),
