@@ -91,6 +91,81 @@ class DatabaseHelper {
             )
           ''');
 
+          // NUEVAS TABLAS PARA CREAR SORTEO
+          await db.execute('''
+            CREATE TABLE ganadores_por_sortear (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              nro_para_sorteo TEXT,
+              orden_sorteado TEXT,
+              nro_inscripcion TEXT,
+              dni TEXT,
+              apellido TEXT,
+              nombre TEXT,
+              sexo TEXT,
+              f_nac TEXT,
+              ingreso_mensual TEXT,
+              estudios TEXT,
+              f_fall TEXT,
+              f_baja TEXT,
+              departamento TEXT,
+              localidad TEXT,
+              barrio TEXT,
+              domicilio TEXT,
+              tel TEXT,
+              cant_ocupantes TEXT,
+              descripcion1 TEXT,
+              descripcion2 TEXT,
+              grupreferencial TEXT,
+              preferencial_ficha TEXT,
+              ficha TEXT,
+              f_alta TEXT,
+              fmodif TEXT,
+              f_baja2 TEXT,
+              expediente TEXT,
+              reemp TEXT,
+              estado_txt TEXT,
+              circuitoipv_txt TEXT,
+              circuitoipv_nota TEXT
+            )
+          ''');
+
+          await db.execute('''
+            CREATE TABLE ganadores_posicionados (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              nro_para_sorteo TEXT,
+              orden_sorteado TEXT,
+              nro_inscripcion TEXT,
+              dni TEXT,
+              apellido TEXT,
+              nombre TEXT,
+              sexo TEXT,
+              f_nac TEXT,
+              ingreso_mensual TEXT,
+              estudios TEXT,
+              f_fall TEXT,
+              f_baja TEXT,
+              departamento TEXT,
+              localidad TEXT,
+              barrio TEXT,
+              domicilio TEXT,
+              tel TEXT,
+              cant_ocupantes TEXT,
+              descripcion1 TEXT,
+              descripcion2 TEXT,
+              grupreferencial TEXT,
+              preferencial_ficha TEXT,
+              ficha TEXT,
+              f_alta TEXT,
+              fmodif TEXT,
+              f_baja2 TEXT,
+              expediente TEXT,
+              reemp TEXT,
+              estado_txt TEXT,
+              circuitoipv_txt TEXT,
+              circuitoipv_nota TEXT
+            )
+          ''');
+
           // Insertar usuario por defecto si no existe
           final usuarios = await db.query(
             'usuarios',
@@ -351,5 +426,21 @@ class DatabaseHelper {
       whereArgs: [id],
     );
     return count > 0;
+  }
+
+  // Tabla para participantes importados para sorteo
+  static Future<void> insertarGanadoresPorSortear(
+    Map<String, dynamic> data,
+  ) async {
+    final db = await database;
+    await db.insert('ganadores_por_sortear', data);
+  }
+
+  // Tabla para ganadores posicionados en el sorteo
+  static Future<void> insertarGanadoresPosicionados(
+    Map<String, dynamic> data,
+  ) async {
+    final db = await database;
+    await db.insert('ganadores_posicionados', data);
   }
 }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 
 //Importaciones de archivos
+import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/screen.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/settings_screen/settings_screen.dart';
@@ -19,6 +19,7 @@ class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
 
   final List<Widget> _screens = [
+    CrearSorteoScreen(),
     ImportPadronesScreen(),
     SearchParticipanteScreen(),
     ListGanadoresScreen(),
@@ -27,6 +28,7 @@ class _HomePageState extends State<HomePage> {
   ];
 
   final List<String> _titles = [
+    "Nuevo Sorteo",
     "Importar Participantes",
     "Buscar Ganador",
     "Listado de Ganadores",
@@ -163,6 +165,10 @@ class _HomePageState extends State<HomePage> {
             },
             labelType: NavigationRailLabelType.all,
             destinations: [
+              NavigationRailDestination(
+                icon: Icon(Icons.upload_file_rounded),
+                label: Text('Crear Nuevo Sorteo'),
+              ),
               NavigationRailDestination(
                 icon: Icon(Icons.upload_file),
                 label: Text('Importar Padrón'),
