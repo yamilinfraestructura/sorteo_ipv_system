@@ -1,13 +1,13 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
-import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';
 import 'package:pinput/pinput.dart';
-import 'package:sorteo_ipv_system/src/data/helper/synology_nas_helper.dart';
-import 'package:sorteo_ipv_system/src/data/helper/ftp_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/synology/synology_nas_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/ftp/ftp_helper.dart';
 
 class SettingsController extends GetxController {
   final TextEditingController pathController = TextEditingController();
@@ -34,12 +34,17 @@ class SettingsController extends GetxController {
   final RxBool ftpSftp = false.obs;
   final RxString mensajeFtp = ''.obs;
 
+  // --- Pin escribano ---
+  final TextEditingController pinEscribanoController = TextEditingController();
+  final RxString mensajePinEscribano = ''.obs;
+
   @override
   void onInit() {
     super.onInit();
     cargarRuta();
     cargarConfigNas();
     cargarConfigFtp();
+    cargarPinEscribano();
   }
 
   Future<void> cargarRuta() async {
@@ -576,6 +581,21 @@ class SettingsController extends GetxController {
       mensajeFtp.value =
           'No se pudo conectar o el directorio no existe/acceso denegado.';
     }
+  }
+
+  Future<void> cargarPinEscribano() async {
+    final pin = await DatabaseHelper.getSetting('pin_escribano');
+    pinEscribanoController.text = pin ?? '';
+  }
+
+  Future<void> guardarPinEscribano() async {
+    final pin = pinEscribanoController.text.trim();
+    if (pin.length != 6 || int.tryParse(pin) == null) {
+      mensajePinEscribano.value = 'El pin debe tener 6 dígitos numéricos.';
+      return;
+    }
+    await DatabaseHelper.upsertSetting('pin_escribano', pin);
+    mensajePinEscribano.value = 'Pin del escribano guardado correctamente.';
   }
 
   @override

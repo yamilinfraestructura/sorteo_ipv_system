@@ -247,6 +247,72 @@ class SettingsScreen extends StatelessWidget {
                       : [],
             ),
           ),
+          // --- Pin del escribano ---
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ExpansionTile(
+              title: Text(
+                'Pin del escribano',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              initiallyExpanded: false,
+              maintainState: true,
+              onExpansionChanged:
+                  esDesarrollador || perfil == 'Administrador' ? null : (_) {},
+              trailing:
+                  esDesarrollador || perfil == 'Administrador'
+                      ? null
+                      : const Icon(Icons.lock, color: Colors.red),
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
+              children:
+                  esDesarrollador || perfil == 'Administrador'
+                      ? [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                          child: TextField(
+                            controller: controller.pinEscribanoController,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Pin del escribano',
+                              hintText: '6 dígitos',
+                            ),
+                            maxLength: 6,
+                            keyboardType: TextInputType.number,
+                            obscureText: true,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.save),
+                          label: const Text('Guardar'),
+                          onPressed: controller.guardarPinEscribano,
+                        ),
+                        const SizedBox(height: 16),
+                        Obx(
+                          () =>
+                              controller.mensajePinEscribano.value.isNotEmpty
+                                  ? Padding(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: Text(
+                                      controller.mensajePinEscribano.value,
+                                      style: TextStyle(
+                                        color:
+                                            controller.mensajePinEscribano.value
+                                                    .contains('correctamente')
+                                                ? Colors.green
+                                                : Colors.red,
+                                      ),
+                                    ),
+                                  )
+                                  : const SizedBox.shrink(),
+                        ),
+                      ]
+                      : [],
+            ),
+          ),
           // --- Gestión de usuarios (penúltimo, con advertencia roja) ---
           Card(
             elevation: 4,

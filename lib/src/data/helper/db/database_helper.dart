@@ -3,7 +3,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart'; // Agregar path_provider
-import 'dart:io'; // Para Directory
 
 class DatabaseHelper {
   static Database? _db;
@@ -165,6 +164,42 @@ class DatabaseHelper {
               circuitoipv_nota TEXT
             )
           ''');
+
+          // NUEVA TABLA: sorteos_creados
+          await db.execute('''
+            CREATE TABLE sorteos_creados (
+              id_sorteo INTEGER PRIMARY KEY AUTOINCREMENT,
+              nombre_sorteo TEXT NOT NULL,
+              tipo_sorteo TEXT NOT NULL,
+              cantidad_manzanas INTEGER,
+              cantidad_viviendas_por_manzana INTEGER,
+              tipo_manzana TEXT,
+              tipo_identificador_casa TEXT,
+              fecha_creacion TEXT,
+              fecha_cierre TEXT,
+              fecha_eliminacion TEXT,
+              id_usuario INTEGER,
+              FOREIGN KEY (id_usuario) REFERENCES usuarios(id_user)
+            )
+          ''');
+
+          // Modificar ganadores_por_sortear para agregar id_sorteo
+          await db.execute('''
+            CREATE TABLE ganadores_por_sortear_tmp AS SELECT *, NULL as id_sorteo FROM ganadores_por_sortear;
+          ''');
+          await db.execute('DROP TABLE ganadores_por_sortear;');
+          await db.execute(
+            'ALTER TABLE ganadores_por_sortear_tmp RENAME TO ganadores_por_sortear;',
+          );
+
+          // Modificar ganadores_posicionados para agregar id_sorteo
+          await db.execute('''
+            CREATE TABLE ganadores_posicionados_tmp AS SELECT *, NULL as id_sorteo FROM ganadores_posicionados;
+          ''');
+          await db.execute('DROP TABLE ganadores_posicionados;');
+          await db.execute(
+            'ALTER TABLE ganadores_posicionados_tmp RENAME TO ganadores_posicionados;',
+          );
 
           // Insertar usuario por defecto si no existe
           final usuarios = await db.query(
@@ -442,5 +477,79 @@ class DatabaseHelper {
   ) async {
     final db = await database;
     await db.insert('ganadores_posicionados', data);
+  }
+
+  // Métodos para sorteos_creados
+  static Future<int> insertarSorteoCreado(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert('sorteos_creados', data);
+  }
+
+  static Future<List<Map<String, dynamic>>> obtenerSorteosCreados() async {
+    final db = await database;
+    return await db.query('sorteos_creados');
+  }
+
+  // Validación de duplicados en ganadores_por_sortear
+  static Future<bool> existeGanadorPorSortear({
+    required String dni,
+    required int idSorteo,
+  }) async {
+    final db = await database;
+    final result = await db.query(
+      'ganadores_por_sortear',
+      where: 'dni = ? AND id_sorteo = ?',
+      whereArgs: [dni, idSorteo],
+      limit: 1,
+    );
+    return result.isNotEmpty;
+  }
+
+  // Insertar ganador por sortear con id_sorteo
+  static Future<void> insertarGanadorPorSortearConSorteo(
+    Map<String, dynamic> data,
+    int idSorteo,
+  ) async {
+    final db = await database;
+    data['id_sorteo'] = idSorteo;
+    await db.insert('ganadores_por_sortear', data);
+  }
+
+  // Insertar ganador posicionado con id_sorteo
+  static Future<void> insertarGanadorPosicionadoConSorteo(
+    Map<String, dynamic> data,
+    int idSorteo,
+  ) async {
+    final db = await database;
+    data['id_sorteo'] = idSorteo;
+    await db.insert('ganadores_posicionados', data);
+  }
+
+  // Verifica si algún DNI ya fue importado en otro sorteo y devuelve el nombre del sorteo
+  static Future<String?> existePadronEnOtroSorteo(
+    List<String> dnis,
+    int idSorteoActual,
+  ) async {
+    final db = await database;
+    final placeholders = List.filled(dnis.length, '?').join(',');
+    final result = await db.rawQuery(
+      '''
+      SELECT gps.dni, sc.nombre_sorteo
+      FROM ganadores_por_sortear gps
+      JOIN sorteos_creados sc ON gps.id_sorteo = sc.id_sorteo
+      WHERE gps.dni IN ($placeholders) AND gps.id_sorteo != ?
+      LIMIT 1
+    ''',
+      [...dnis, idSorteoActual],
+    );
+    if (result.isNotEmpty) {
+      final row = result.first;
+      return 'El padrón con DNI ${row['dni']} ya fue importado en el sorteo "${row['nombre_sorteo']}"';
+    }
+    return null;
+  }
+
+  static Future<String?> getPinEscribano() async {
+    return await getSetting('pin_escribano');
   }
 }

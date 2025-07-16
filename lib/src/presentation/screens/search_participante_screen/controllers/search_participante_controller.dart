@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
@@ -647,14 +647,18 @@ class SearchParticipanteController extends GetxController {
     BuildContext context,
     Map<String, dynamic> ganador,
   ) async {
-    final TextEditingController pinController = TextEditingController();
+    final TextEditingController pinUsuarioController = TextEditingController();
+    final TextEditingController pinEscribanoController =
+        TextEditingController();
     bool eliminado = false;
+    String pinEscribano = await DatabaseHelper.getPinEscribano() ?? '';
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         final focusNode = FocusNode();
-        String errorPin = '';
+        String errorPinUsuario = '';
+        String errorPinEscribano = '';
         return StatefulBuilder(
           builder: (context, setState) {
             return RawKeyboardListener(
@@ -666,20 +670,33 @@ class SearchParticipanteController extends GetxController {
                         event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
                   final loginCtrl = Get.find<LoginController>();
                   final user = loginCtrl.usuarioLogueado.value;
-                  final pinIngresado = pinController.text;
+                  final pinUsuarioIngresado = pinUsuarioController.text;
+                  final pinEscribanoIngresado = pinEscribanoController.text;
                   final perfil = user?['perfil_user']?.toString() ?? '';
                   final pinHashGuardado = user?['password']?.toString() ?? '';
-                  final pinHashIngresado =
-                      sha256.convert(utf8.encode(pinIngresado)).toString();
-                  if (pinIngresado.length == 6 &&
+                  final pinHashUsuarioIngresado =
+                      sha256
+                          .convert(utf8.encode(pinUsuarioIngresado))
+                          .toString();
+                  final pinUsuarioOk =
+                      pinUsuarioIngresado.length == 6 &&
                       perfil.isNotEmpty &&
                       (perfil == 'Desarrollador' ||
                           perfil == 'Administrador') &&
-                      pinHashIngresado == pinHashGuardado) {
+                      pinHashUsuarioIngresado == pinHashGuardado;
+                  final pinEscribanoOk =
+                      pinEscribanoIngresado == pinEscribano &&
+                      pinEscribanoIngresado.length == 6;
+                  if (pinUsuarioOk && pinEscribanoOk) {
                     eliminado = true;
                     Navigator.pop(context);
                   } else {
-                    setState(() => errorPin = 'Pin o perfil incorrecto');
+                    setState(() {
+                      errorPinUsuario =
+                          pinUsuarioOk ? '' : 'Pin de usuario incorrecto';
+                      errorPinEscribano =
+                          pinEscribanoOk ? '' : 'Pin de escribano incorrecto';
+                    });
                   }
                 }
               },
@@ -693,12 +710,12 @@ class SearchParticipanteController extends GetxController {
                     Text('Nombre: ' + (ganador['full_name'] ?? '')),
                     Text('DNI: ' + (ganador['document'] ?? '')),
                     const SizedBox(height: 16),
-                    const Text('Ingresá el pin de 6 dígitos para confirmar:'),
+                    const Text('Pin del usuario (6 dígitos):'),
                     SizedBox(
                       width: 220,
                       child: Pinput(
                         length: 6,
-                        controller: pinController,
+                        controller: pinUsuarioController,
                         obscureText: true,
                         autofocus: true,
                         defaultPinTheme: PinTheme(
@@ -749,15 +766,81 @@ class SearchParticipanteController extends GetxController {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        // No eliminar al completar el pin, solo con botón o enter
                         onCompleted: (_) {},
                       ),
                     ),
-                    if (errorPin.isNotEmpty)
+                    if (errorPinUsuario.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
+                        padding: const EdgeInsets.only(top: 4.0),
                         child: Text(
-                          errorPin,
+                          errorPinUsuario,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    const Text('Pin del escribano (6 dígitos):'),
+                    SizedBox(
+                      width: 220,
+                      child: Pinput(
+                        length: 6,
+                        controller: pinEscribanoController,
+                        obscureText: true,
+                        defaultPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[100],
+                            border: Border.all(color: Colors.orange, width: 2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        focusedPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[200],
+                            border: Border.all(
+                              color: Colors.deepOrange,
+                              width: 2.5,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        submittedPinTheme: PinTheme(
+                          width: 36,
+                          height: 48,
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[300],
+                            border: Border.all(
+                              color: Colors.deepOrange,
+                              width: 2.5,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onCompleted: (_) {},
+                      ),
+                    ),
+                    if (errorPinEscribano.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          errorPinEscribano,
                           style: const TextStyle(color: Colors.red),
                         ),
                       ),
@@ -772,21 +855,36 @@ class SearchParticipanteController extends GetxController {
                     onPressed: () async {
                       final loginCtrl = Get.find<LoginController>();
                       final user = loginCtrl.usuarioLogueado.value;
-                      final pinIngresado = pinController.text;
+                      final pinUsuarioIngresado = pinUsuarioController.text;
+                      final pinEscribanoIngresado = pinEscribanoController.text;
                       final perfil = user?['perfil_user']?.toString() ?? '';
                       final pinHashGuardado =
                           user?['password']?.toString() ?? '';
-                      final pinHashIngresado =
-                          sha256.convert(utf8.encode(pinIngresado)).toString();
-                      if (pinIngresado.length == 6 &&
+                      final pinHashUsuarioIngresado =
+                          sha256
+                              .convert(utf8.encode(pinUsuarioIngresado))
+                              .toString();
+                      final pinUsuarioOk =
+                          pinUsuarioIngresado.length == 6 &&
                           perfil.isNotEmpty &&
                           (perfil == 'Desarrollador' ||
                               perfil == 'Administrador') &&
-                          pinHashIngresado == pinHashGuardado) {
+                          pinHashUsuarioIngresado == pinHashGuardado;
+                      final pinEscribanoOk =
+                          pinEscribanoIngresado == pinEscribano &&
+                          pinEscribanoIngresado.length == 6;
+                      if (pinUsuarioOk && pinEscribanoOk) {
                         eliminado = true;
                         Navigator.pop(context);
                       } else {
-                        setState(() => errorPin = 'Pin o perfil incorrecto');
+                        setState(() {
+                          errorPinUsuario =
+                              pinUsuarioOk ? '' : 'Pin de usuario incorrecto';
+                          errorPinEscribano =
+                              pinEscribanoOk
+                                  ? ''
+                                  : 'Pin de escribano incorrecto';
+                        });
                       }
                     },
                     child: const Text(

@@ -1,6 +1,6 @@
 // Controlador para la pantalla de importación de padrones
 import 'package:get/get.dart';
-import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';

@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
-import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as excel;
@@ -13,8 +13,8 @@ import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_co
 import 'package:pdf/widgets.dart' as pw;
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
-import 'package:sorteo_ipv_system/src/data/helper/synology_nas_helper.dart';
-import 'package:sorteo_ipv_system/src/data/helper/ftp_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/synology/synology_nas_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/ftp/ftp_helper.dart';
 import 'package:path/path.dart' as p;
 import 'package:sorteo_ipv_system/src/data/helper/supabase/db_supabase_helper.dart';
 import 'package:dio/dio.dart';

@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
-import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:sorteo_ipv_system/src/presentation/screens/login_screen/login_controller.dart';

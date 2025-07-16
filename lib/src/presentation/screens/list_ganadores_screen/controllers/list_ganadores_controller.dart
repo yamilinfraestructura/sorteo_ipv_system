@@ -1,6 +1,6 @@
 // Controlador para la pantalla de listado de ganadores
 import 'package:get/get.dart';
-import 'package:sorteo_ipv_system/src/data/helper/database_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
 
 class ListGanadoresController extends GetxController {
   // Lista observable de ganadores para mostrar en la UI
