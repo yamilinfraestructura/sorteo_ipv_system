@@ -109,14 +109,59 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                         value: controller.grupoSeleccionado.value,
                         isExpanded: true,
                         items:
-                            controller.grupos
-                                .map(
-                                  (grupo) => DropdownMenuItem(
-                                    value: grupo,
-                                    child: Text(grupo),
+                            controller.grupos.map((grupo) {
+                              final cerrado =
+                                  controller.gruposCerrados[grupo] == true;
+                              return DropdownMenuItem(
+                                value: grupo,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color:
+                                        cerrado ? Colors.green.shade100 : null,
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                )
-                                .toList(),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      if (cerrado) ...[
+                                        const Icon(
+                                          Icons.lock,
+                                          color: Colors.green,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 4),
+                                      ],
+                                      Text(
+                                        grupo,
+                                        style: TextStyle(
+                                          color:
+                                              cerrado
+                                                  ? Colors.green.shade800
+                                                  : null,
+                                          fontWeight:
+                                              cerrado ? FontWeight.bold : null,
+                                        ),
+                                      ),
+                                      if (cerrado)
+                                        const Padding(
+                                          padding: EdgeInsets.only(left: 4),
+                                          child: Text(
+                                            '(CERRADO)',
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                         onChanged: controller.onGrupoChanged,
                       ),
                     ),

@@ -24,6 +24,7 @@ class SearchParticipanteController extends GetxController {
   final TextEditingController numeroController = TextEditingController();
   var ultimoGanadorId = Rxn<int>();
   var sorteoCerrado = false.obs;
+  var gruposCerrados = <String, bool>{}.obs;
 
   @override
   void onInit() {
@@ -60,9 +61,50 @@ class SearchParticipanteController extends GetxController {
     );
     final gruposDb = result.map((e) => e['group'] as String).toList();
     grupos.value = ['Seleccionar', ...gruposDb];
+    // Calcular estado de cierre para cada grupo del barrio seleccionado
+    await actualizarGruposCerrados();
     if (grupos.length > 1 && !grupos.contains(grupoSeleccionado.value)) {
       grupoSeleccionado.value = 'Seleccionar';
     }
+  }
+
+  Future<void> actualizarGruposCerrados() async {
+    gruposCerrados.clear();
+    final db = await DatabaseHelper.database;
+    final barrio = barrioSeleccionado.value;
+    if (barrio == null || barrio == 'Seleccionar') return;
+    final result = await db.rawQuery(
+      'SELECT DISTINCT "group" FROM participantes WHERE neighborhood = ?',
+      [barrio],
+    );
+    for (var row in result) {
+      final grupo = row['group'] as String;
+      // Contar ganadores
+      final countResult = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
+        [barrio, grupo],
+      );
+      final totalGanadores =
+          countResult.first['count'] is int
+              ? countResult.first['count'] as int
+              : int.tryParse(countResult.first['count']?.toString() ?? '0') ??
+                  0;
+      // Obtener viviendas
+      final infoResult = await db.query(
+        'participantes',
+        columns: ['viviendas'],
+        where: 'neighborhood = ? AND "group" = ?',
+        whereArgs: [barrio, grupo],
+        limit: 1,
+      );
+      int viviendas = 0;
+      if (infoResult.isNotEmpty) {
+        final v = infoResult.first['viviendas'];
+        viviendas = v is int ? v : int.tryParse(v?.toString() ?? '0') ?? 0;
+      }
+      gruposCerrados[grupo] = viviendas > 0 && totalGanadores == viviendas;
+    }
+    gruposCerrados.refresh();
   }
 
   Future<void> cargarGanadoresRecientes() async {
@@ -270,8 +312,10 @@ class SearchParticipanteController extends GetxController {
       );
       final gruposDb = result.map((e) => e['group'] as String).toList();
       grupos.value = ['Seleccionar', ...gruposDb];
+      await actualizarGruposCerrados();
     } else {
       grupos.value = ['Seleccionar'];
+      gruposCerrados.clear();
     }
     await cargarGanadoresRecientes();
     await cargarInfoGrupo();
@@ -464,8 +508,43 @@ class SearchParticipanteController extends GetxController {
     Map<String, dynamic> part,
   ) {
     final focusNode = FocusNode();
+    bool intentToClose = false;
+    void showConfirmExitDialog() {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('¿Salir sin registrar?'),
+              content: const Text(
+                '¿Está seguro que desea salir? Si sale, no se registrará el beneficiario.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(
+                      context,
+                    ).pop(); // Cierra el dialogo de confirmación
+                  },
+                  child: const Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(
+                      context,
+                    ).pop(); // Cierra el dialogo de confirmación
+                    Navigator.of(context).pop(); // Cierra el alert principal
+                  },
+                  child: const Text('Salir sin registrar'),
+                ),
+              ],
+            ),
+      );
+    }
+
     showDialog(
       context: context,
+      barrierDismissible: false, // No permitir cerrar con clic fuera
       builder:
           (_) => StatefulBuilder(
             builder: (context, setState) {
@@ -478,54 +557,72 @@ class SearchParticipanteController extends GetxController {
                           event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
                     Navigator.pop(context);
                     registrarGanador(context);
+                  } else if (event is RawKeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.escape) {
+                    showConfirmExitDialog();
                   }
                 },
-                child: AlertDialog(
-                  title: Text(
-                    part['full_name'] ?? '',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: ResponsiveConfig.titleSize,
+                child: WillPopScope(
+                  onWillPop: () async {
+                    showConfirmExitDialog();
+                    return false;
+                  },
+                  child: AlertDialog(
+                    title: Text(
+                      part['full_name'] ?? '',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: ResponsiveConfig.titleSize,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "DNI: \\${part['document']}",
-                        style: TextStyle(fontSize: ResponsiveConfig.bodySize),
-                      ),
-                      Text(
-                        "Barrio: \\${part['neighborhood']}",
-                        style: TextStyle(fontSize: ResponsiveConfig.bodySize),
-                      ),
-                      Text(
-                        "Grupo: \\${part['group']}",
-                        style: TextStyle(fontSize: ResponsiveConfig.bodySize),
-                      ),
-                      Text(
-                        "Nro de Orden: \\${part['order_number']}",
-                        style: TextStyle(fontSize: ResponsiveConfig.bodySize),
-                      ),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        registrarGanador(context);
-                      },
-                      child: Text(
-                        "Aceptar y Registrar",
-                        style: TextStyle(
-                          fontSize: ResponsiveConfig.bodySize,
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "DNI: \\${part['document']}",
+                          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                        ),
+                        Text(
+                          "Barrio: \\${part['neighborhood']}",
+                          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                        ),
+                        Text(
+                          "Grupo: \\${part['group']}",
+                          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                        ),
+                        Text(
+                          "Nro de Orden: \\${part['order_number']}",
+                          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          registrarGanador(context);
+                        },
+                        child: Text(
+                          "Aceptar y Registrar",
+                          style: TextStyle(
+                            fontSize: ResponsiveConfig.bodySize,
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      /* TextButton(
+                        onPressed: () {
+                          showConfirmExitDialog();
+                        },
+                        child: const Text(
+                          "Cancelar",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),*/
+                    ],
+                  ),
                 ),
               );
             },

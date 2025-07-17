@@ -260,15 +260,14 @@ class SettingsScreen extends StatelessWidget {
               ),
               initiallyExpanded: false,
               maintainState: true,
-              onExpansionChanged:
-                  esDesarrollador || perfil == 'Administrador' ? null : (_) {},
+              onExpansionChanged: esDesarrollador ? null : (_) {},
               trailing:
-                  esDesarrollador || perfil == 'Administrador'
+                  esDesarrollador
                       ? null
                       : const Icon(Icons.lock, color: Colors.red),
               tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
               children:
-                  esDesarrollador || perfil == 'Administrador'
+                  esDesarrollador
                       ? [
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10.0),

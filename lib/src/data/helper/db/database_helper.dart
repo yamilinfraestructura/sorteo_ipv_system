@@ -208,7 +208,7 @@ class DatabaseHelper {
             whereArgs: ['yamilsaad00@gmail.com'],
           );
           if (usuarios.isEmpty) {
-            final password = '654321';
+            final password = '425163';
             final passwordHash =
                 sha256.convert(utf8.encode(password)).toString();
             await db.insert('usuarios', {

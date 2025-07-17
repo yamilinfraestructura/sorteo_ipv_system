@@ -17,9 +17,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
+  bool isRailExtended = true;
 
   final List<Widget> _screens = [
-    CrearSorteoScreen(),
+    //CrearSorteoScreen(),
     ImportPadronesScreen(),
     SearchParticipanteScreen(),
     ListGanadoresScreen(),
@@ -28,7 +29,7 @@ class _HomePageState extends State<HomePage> {
   ];
 
   final List<String> _titles = [
-    "Nuevo Sorteo",
+    //"Nuevo Sorteo",
     "Importar Participantes",
     "Buscar Ganador",
     "Listado de Ganadores",
@@ -153,41 +154,76 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          NavigationRail(
-            indicatorShape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(16)),
-            ),
-            selectedIndex: selectedIndex,
-            onDestinationSelected: (int index) {
-              setState(() {
-                selectedIndex = index;
-              });
-            },
-            labelType: NavigationRailLabelType.all,
-            destinations: [
-              NavigationRailDestination(
-                icon: Icon(Icons.upload_file_rounded),
-                label: Text('Crear Nuevo Sorteo'),
+          Column(
+            children: [
+              Expanded(
+                child: NavigationRail(
+                  indicatorShape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                  ),
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (int index) {
+                    setState(() {
+                      selectedIndex = index;
+                    });
+                  },
+                  labelType: NavigationRailLabelType.none,
+                  extended: isRailExtended,
+                  destinations: [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.upload_file, size: 32),
+                      label: Text(
+                        'Importar Padrón',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.search, size: 32),
+                      label: Text(
+                        'Buscar y Registrar',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.list_alt, size: 32),
+                      label: Text(
+                        'Lista Ganadores',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.download, size: 32),
+                      label: Text(
+                        'Exportar Ganadores',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.settings, size: 32),
+                      label: Text(
+                        'Configuración',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              NavigationRailDestination(
-                icon: Icon(Icons.upload_file),
-                label: Text('Importar Padrón'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.search),
-                label: Text('Buscar y Registrar'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.list_alt),
-                label: Text('Ganadores Sorteados'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.download),
-                label: Text('Exportar Ganadores'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.settings),
-                label: Text('Configuración'),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+                child: IconButton(
+                  icon: Icon(
+                    isRailExtended
+                        ? Icons.arrow_back_ios
+                        : Icons.arrow_forward_ios,
+                    color: Colors.black,
+                  ),
+                  tooltip: isRailExtended ? 'Contraer menú' : 'Expandir menú',
+                  onPressed: () {
+                    setState(() {
+                      isRailExtended = !isRailExtended;
+                    });
+                  },
+                ),
               ),
             ],
           ),
