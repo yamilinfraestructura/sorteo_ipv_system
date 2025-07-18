@@ -399,107 +399,102 @@ class SearchParticipanteController extends GetxController {
   }) {
     if (!context.mounted) return;
     final focusNode = FocusNode();
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder:
-          (_) => StatefulBuilder(
-            builder: (context, setState) {
-              return RawKeyboardListener(
-                focusNode: focusNode,
-                autofocus: true,
-                onKey: (RawKeyEvent event) {
-                  if (event is RawKeyDownEvent &&
-                      (event.logicalKey == LogicalKeyboardKey.enter ||
-                          event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                    Navigator.pop(context);
-                    if (onDialogClosed != null) {
-                      onDialogClosed();
-                    }
-                  }
-                },
-                child:
-                    titulo == "Sorteo completo"
-                        ? AlertDialog(
-                          backgroundColor: Colors.amber[50],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          title: Column(
-                            children: [
-                              Icon(
-                                Icons.emoji_events,
-                                color: Colors.amber[800],
-                                size: 60,
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                titulo,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 28,
-                                  color: Colors.amber[900],
-                                  letterSpacing: 1.2,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                          content: Text(
-                            mensajeAlerta,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          actionsAlignment: MainAxisAlignment.center,
-                          actions: [
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.amber[700],
-                                foregroundColor: Colors.white,
-                                textStyle: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(Icons.check_circle_outline),
-                              label: const Text("Aceptar"),
-                            ),
-                          ],
-                        )
-                        : AlertDialog(
-                          title: Text(
-                            titulo,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: ResponsiveConfig.subtitleSize,
-                            ),
-                          ),
-                          content: Text(mensajeAlerta),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                if (onDialogClosed != null) {
-                                  onDialogClosed();
-                                }
-                              },
-                              child: const Text("Aceptar"),
-                            ),
-                          ],
-                        ),
-              );
+      barrierDismissible: true,
+      barrierColor: Colors.transparent,
+      barrierLabel: 'Cerrar alerta',
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Align(
+          alignment: Alignment.bottomRight,
+          child: RawKeyboardListener(
+            focusNode: focusNode,
+            autofocus: true,
+            onKey: (RawKeyEvent event) {
+              if (event is RawKeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                Navigator.pop(context);
+                if (onDialogClosed != null) {
+                  onDialogClosed();
+                }
+              }
             },
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.47,
+              height: MediaQuery.of(context).size.height * 0.28,
+              margin: const EdgeInsets.all(10),
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                elevation: 12,
+                child: Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        titulo,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: ResponsiveConfig.titleSize,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        mensajeAlerta,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 5),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber[700],
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (onDialogClosed != null) {
+                            onDialogClosed();
+                          }
+                        },
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text("Aceptar"),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 1),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
     );
   }
 
@@ -510,43 +505,99 @@ class SearchParticipanteController extends GetxController {
     final focusNode = FocusNode();
     bool intentToClose = false;
     void showConfirmExitDialog() {
-      showDialog(
+      showGeneralDialog(
         context: context,
         barrierDismissible: false,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('¿Salir sin registrar?'),
-              content: const Text(
-                '¿Está seguro que desea salir? Si sale, no se registrará el beneficiario.',
+        barrierColor: Colors.transparent,
+        barrierLabel: 'Cerrar alerta',
+        transitionDuration: const Duration(milliseconds: 400),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Align(
+            alignment: Alignment.bottomRight,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.45,
+              height: MediaQuery.of(context).size.height * 0.28,
+              margin: const EdgeInsets.all(24),
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                elevation: 12,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '¿Salir sin registrar?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: ResponsiveConfig.titleSize,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        '¿Está seguro que desea salir? Si sale, no se registrará el beneficiario.',
+                        style: TextStyle(fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('Cancelar'),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(
+                                context,
+                              ).pop(); // Cierra el dialogo de confirmación
+                              Navigator.of(
+                                context,
+                              ).pop(); // Cierra el alert principal
+                            },
+                            child: const Text(
+                              'Salir sin registrar',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).pop(); // Cierra el dialogo de confirmación
-                  },
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).pop(); // Cierra el dialogo de confirmación
-                    Navigator.of(context).pop(); // Cierra el alert principal
-                  },
-                  child: const Text('Salir sin registrar'),
-                ),
-              ],
             ),
+          );
+        },
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 1),
+              end: Offset.zero,
+            ).animate(animation),
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        },
       );
     }
 
-    showDialog(
+    showGeneralDialog(
       context: context,
       barrierDismissible: false, // No permitir cerrar con clic fuera
-      builder:
-          (_) => StatefulBuilder(
+      barrierColor: Colors.transparent,
+      barrierLabel: 'Cerrar alerta',
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Align(
+          alignment: Alignment.bottomRight,
+          child: StatefulBuilder(
             builder: (context, setState) {
               return RawKeyboardListener(
                 focusNode: focusNode,
@@ -567,66 +618,85 @@ class SearchParticipanteController extends GetxController {
                     showConfirmExitDialog();
                     return false;
                   },
-                  child: AlertDialog(
-                    title: Text(
-                      part['full_name'] ?? '',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: ResponsiveConfig.titleSize,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.47,
+                    height: MediaQuery.of(context).size.height * 0.28,
+                    margin: const EdgeInsets.all(24),
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      elevation: 12,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              part['full_name'] ?? '',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: ResponsiveConfig.titleSize,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              "DNI: \\${part['document']}",
+                              style: TextStyle(
+                                fontSize: ResponsiveConfig.bodySize,
+                              ),
+                            ),
+                            Text(
+                              "Nro de Sorteo: \\${part['order_number']}",
+                              style: TextStyle(
+                                fontSize: ResponsiveConfig.bodySize,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[700],
+                                foregroundColor: Colors.white,
+                                textStyle: TextStyle(
+                                  fontSize: ResponsiveConfig.bodySize,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                registrarGanador(context);
+                              },
+                              icon: const Icon(Icons.check_circle_outline),
+                              label: const Text("Aceptar"),
+                            ),
+                          ],
+                        ),
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "DNI: \\${part['document']}",
-                          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
-                        ),
-                        Text(
-                          "Barrio: \\${part['neighborhood']}",
-                          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
-                        ),
-                        Text(
-                          "Grupo: \\${part['group']}",
-                          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
-                        ),
-                        Text(
-                          "Nro de Orden: \\${part['order_number']}",
-                          style: TextStyle(fontSize: ResponsiveConfig.bodySize),
-                        ),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          registrarGanador(context);
-                        },
-                        child: Text(
-                          "Aceptar y Registrar",
-                          style: TextStyle(
-                            fontSize: ResponsiveConfig.bodySize,
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      /* TextButton(
-                        onPressed: () {
-                          showConfirmExitDialog();
-                        },
-                        child: const Text(
-                          "Cancelar",
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),*/
-                    ],
                   ),
                 ),
               );
             },
           ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 1),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
     );
   }
 
@@ -749,250 +819,311 @@ class SearchParticipanteController extends GetxController {
         TextEditingController();
     bool eliminado = false;
     String pinEscribano = await DatabaseHelper.getPinEscribano() ?? '';
-    await showDialog(
+    final focusNode = FocusNode();
+    String errorPinUsuario = '';
+    String errorPinEscribano = '';
+    await showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        final focusNode = FocusNode();
-        String errorPinUsuario = '';
-        String errorPinEscribano = '';
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return RawKeyboardListener(
-              focusNode: focusNode,
-              autofocus: true,
-              onKey: (RawKeyEvent event) async {
-                if (event is RawKeyDownEvent &&
-                    (event.logicalKey == LogicalKeyboardKey.enter ||
-                        event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-                  final loginCtrl = Get.find<LoginController>();
-                  final user = loginCtrl.usuarioLogueado.value;
-                  final pinUsuarioIngresado = pinUsuarioController.text;
-                  final pinEscribanoIngresado = pinEscribanoController.text;
-                  final perfil = user?['perfil_user']?.toString() ?? '';
-                  final pinHashGuardado = user?['password']?.toString() ?? '';
-                  final pinHashUsuarioIngresado =
-                      sha256
-                          .convert(utf8.encode(pinUsuarioIngresado))
-                          .toString();
-                  final pinUsuarioOk =
-                      pinUsuarioIngresado.length == 6 &&
-                      perfil.isNotEmpty &&
-                      (perfil == 'Desarrollador' ||
-                          perfil == 'Administrador') &&
-                      pinHashUsuarioIngresado == pinHashGuardado;
-                  final pinEscribanoOk =
-                      pinEscribanoIngresado == pinEscribano &&
-                      pinEscribanoIngresado.length == 6;
-                  if (pinUsuarioOk && pinEscribanoOk) {
-                    eliminado = true;
-                    Navigator.pop(context);
-                  } else {
-                    setState(() {
-                      errorPinUsuario =
-                          pinUsuarioOk ? '' : 'Pin de usuario incorrecto';
-                      errorPinEscribano =
-                          pinEscribanoOk ? '' : 'Pin de escribano incorrecto';
-                    });
-                  }
-                }
-              },
-              child: AlertDialog(
-                title: const Text('Eliminar ganador'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('¿Estás seguro que deseas eliminar a este ganador?'),
-                    const SizedBox(height: 12),
-                    Text('Nombre: ' + (ganador['full_name'] ?? '')),
-                    Text('DNI: ' + (ganador['document'] ?? '')),
-                    const SizedBox(height: 16),
-                    const Text('Pin del usuario (6 dígitos):'),
-                    SizedBox(
-                      width: 220,
-                      child: Pinput(
-                        length: 6,
-                        controller: pinUsuarioController,
-                        obscureText: true,
-                        autofocus: true,
-                        defaultPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[100],
-                            border: Border.all(color: Colors.orange, width: 2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        focusedPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[200],
-                            border: Border.all(
-                              color: Colors.deepOrange,
-                              width: 2.5,
+      barrierColor: Colors.transparent,
+      barrierLabel: 'Cerrar alerta',
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Align(
+          alignment: Alignment.bottomRight,
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Container(
+                width: MediaQuery.of(context).size.width * 0.47,
+                height: MediaQuery.of(context).size.height * 0.28,
+                margin: const EdgeInsets.all(24),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  elevation: 12,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: RawKeyboardListener(
+                      focusNode: focusNode,
+                      autofocus: true,
+                      onKey: (RawKeyEvent event) async {
+                        if (event is RawKeyDownEvent &&
+                            (event.logicalKey == LogicalKeyboardKey.enter ||
+                                event.logicalKey ==
+                                    LogicalKeyboardKey.numpadEnter)) {
+                          final loginCtrl = Get.find<LoginController>();
+                          final user = loginCtrl.usuarioLogueado.value;
+                          final pinUsuarioIngresado = pinUsuarioController.text;
+                          final pinEscribanoIngresado =
+                              pinEscribanoController.text;
+                          final perfil = user?['perfil_user']?.toString() ?? '';
+                          final pinHashGuardado =
+                              user?['password']?.toString() ?? '';
+                          final pinHashUsuarioIngresado =
+                              sha256
+                                  .convert(utf8.encode(pinUsuarioIngresado))
+                                  .toString();
+                          final pinUsuarioOk =
+                              pinUsuarioIngresado.length == 6 &&
+                              perfil.isNotEmpty &&
+                              (perfil == 'Desarrollador' ||
+                                  perfil == 'Administrador') &&
+                              pinHashUsuarioIngresado == pinHashGuardado;
+                          final pinEscribanoOk =
+                              pinEscribanoIngresado == pinEscribano &&
+                              pinEscribanoIngresado.length == 6;
+                          if (pinUsuarioOk && pinEscribanoOk) {
+                            eliminado = true;
+                            Navigator.pop(context);
+                          } else {
+                            setState(() {
+                              errorPinUsuario =
+                                  pinUsuarioOk
+                                      ? ''
+                                      : 'Pin de usuario incorrecto';
+                              errorPinEscribano =
+                                  pinEscribanoOk
+                                      ? ''
+                                      : 'Pin de escribano incorrecto';
+                            });
+                          }
+                        }
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Eliminar ganador',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: ResponsiveConfig.titleSize * 0.5,
                             ),
-                            borderRadius: BorderRadius.circular(12),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        submittedPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[300],
-                            border: Border.all(
-                              color: Colors.deepOrange,
-                              width: 2.5,
+                          const SizedBox(height: 10),
+                          // Quitar los subtítulos de los pines
+                          SizedBox(
+                            width: 220,
+                            child: Pinput(
+                              length: 6,
+                              controller: pinUsuarioController,
+                              obscureText: true,
+                              autofocus: true,
+                              defaultPinTheme: PinTheme(
+                                width: 28,
+                                height: 36,
+                                textStyle: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[100],
+                                  border: Border.all(
+                                    color: Colors.orange,
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              focusedPinTheme: PinTheme(
+                                width: 28,
+                                height: 36,
+                                textStyle: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[200],
+                                  border: Border.all(
+                                    color: Colors.deepOrange,
+                                    width: 2.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              submittedPinTheme: PinTheme(
+                                width: 28,
+                                height: 36,
+                                textStyle: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[300],
+                                  border: Border.all(
+                                    color: Colors.deepOrange,
+                                    width: 2.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onCompleted: (_) {},
                             ),
-                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ),
-                        onCompleted: (_) {},
+                          if (errorPinUsuario.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                errorPinUsuario,
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: 220,
+                            child: Pinput(
+                              length: 6,
+                              controller: pinEscribanoController,
+                              obscureText: true,
+                              defaultPinTheme: PinTheme(
+                                width: 28,
+                                height: 36,
+                                textStyle: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[100],
+                                  border: Border.all(
+                                    color: Colors.orange,
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              focusedPinTheme: PinTheme(
+                                width: 28,
+                                height: 36,
+                                textStyle: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[200],
+                                  border: Border.all(
+                                    color: Colors.deepOrange,
+                                    width: 2.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              submittedPinTheme: PinTheme(
+                                width: 28,
+                                height: 36,
+                                textStyle: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[300],
+                                  border: Border.all(
+                                    color: Colors.deepOrange,
+                                    width: 2.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onCompleted: (_) {},
+                            ),
+                          ),
+                          if (errorPinEscribano.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                errorPinEscribano,
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text(
+                                  'Cancelar',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton(
+                                onPressed: () async {
+                                  final loginCtrl = Get.find<LoginController>();
+                                  final user = loginCtrl.usuarioLogueado.value;
+                                  final pinUsuarioIngresado =
+                                      pinUsuarioController.text;
+                                  final pinEscribanoIngresado =
+                                      pinEscribanoController.text;
+                                  final perfil =
+                                      user?['perfil_user']?.toString() ?? '';
+                                  final pinHashGuardado =
+                                      user?['password']?.toString() ?? '';
+                                  final pinHashUsuarioIngresado =
+                                      sha256
+                                          .convert(
+                                            utf8.encode(pinUsuarioIngresado),
+                                          )
+                                          .toString();
+                                  final pinUsuarioOk =
+                                      pinUsuarioIngresado.length == 6 &&
+                                      perfil.isNotEmpty &&
+                                      (perfil == 'Desarrollador' ||
+                                          perfil == 'Administrador') &&
+                                      pinHashUsuarioIngresado ==
+                                          pinHashGuardado;
+                                  final pinEscribanoOk =
+                                      pinEscribanoIngresado == pinEscribano &&
+                                      pinEscribanoIngresado.length == 6;
+                                  if (pinUsuarioOk && pinEscribanoOk) {
+                                    eliminado = true;
+                                    Navigator.pop(context);
+                                  } else {
+                                    setState(() {
+                                      errorPinUsuario =
+                                          pinUsuarioOk
+                                              ? ''
+                                              : 'Pin de usuario incorrecto';
+                                      errorPinEscribano =
+                                          pinEscribanoOk
+                                              ? ''
+                                              : 'Pin de escribano incorrecto';
+                                    });
+                                  }
+                                },
+                                child: const Text(
+                                  'Eliminar',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    if (errorPinUsuario.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
-                        child: Text(
-                          errorPinUsuario,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                    const Text('Pin del escribano (6 dígitos):'),
-                    SizedBox(
-                      width: 220,
-                      child: Pinput(
-                        length: 6,
-                        controller: pinEscribanoController,
-                        obscureText: true,
-                        defaultPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[100],
-                            border: Border.all(color: Colors.orange, width: 2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        focusedPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[200],
-                            border: Border.all(
-                              color: Colors.deepOrange,
-                              width: 2.5,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        submittedPinTheme: PinTheme(
-                          width: 36,
-                          height: 48,
-                          textStyle: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[300],
-                            border: Border.all(
-                              color: Colors.deepOrange,
-                              width: 2.5,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onCompleted: (_) {},
-                      ),
-                    ),
-                    if (errorPinEscribano.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
-                        child: Text(
-                          errorPinEscribano,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar'),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      final loginCtrl = Get.find<LoginController>();
-                      final user = loginCtrl.usuarioLogueado.value;
-                      final pinUsuarioIngresado = pinUsuarioController.text;
-                      final pinEscribanoIngresado = pinEscribanoController.text;
-                      final perfil = user?['perfil_user']?.toString() ?? '';
-                      final pinHashGuardado =
-                          user?['password']?.toString() ?? '';
-                      final pinHashUsuarioIngresado =
-                          sha256
-                              .convert(utf8.encode(pinUsuarioIngresado))
-                              .toString();
-                      final pinUsuarioOk =
-                          pinUsuarioIngresado.length == 6 &&
-                          perfil.isNotEmpty &&
-                          (perfil == 'Desarrollador' ||
-                              perfil == 'Administrador') &&
-                          pinHashUsuarioIngresado == pinHashGuardado;
-                      final pinEscribanoOk =
-                          pinEscribanoIngresado == pinEscribano &&
-                          pinEscribanoIngresado.length == 6;
-                      if (pinUsuarioOk && pinEscribanoOk) {
-                        eliminado = true;
-                        Navigator.pop(context);
-                      } else {
-                        setState(() {
-                          errorPinUsuario =
-                              pinUsuarioOk ? '' : 'Pin de usuario incorrecto';
-                          errorPinEscribano =
-                              pinEscribanoOk
-                                  ? ''
-                                  : 'Pin de escribano incorrecto';
-                        });
-                      }
-                    },
-                    child: const Text(
-                      'Eliminar',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+              );
+            },
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 1),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
         );
       },
     );
