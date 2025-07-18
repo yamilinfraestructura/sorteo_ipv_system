@@ -341,7 +341,7 @@ class SearchParticipanteController extends GetxController {
     }
     final numero = int.tryParse(numeroController.text);
     if (numero == null) {
-      mensaje.value = "Número inválido.";
+      mensaje.value = "Número inválido  .";
       mostrarAlerta(
         context,
         "Número inválido",
@@ -368,7 +368,7 @@ class SearchParticipanteController extends GetxController {
         mostrarAlerta(
           context,
           "Ya registrado",
-          "Este participante ya ha sido registrado como ganador. Posición Número $pos",
+          "Fue registrado en la <b>Posición Número $pos</b>",
           onDialogClosed: onDialogClosed,
         );
         participante.value = null;
@@ -443,15 +443,26 @@ class SearchParticipanteController extends GetxController {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        mensajeAlerta,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      const SizedBox(height: 10),
+                      mensajeAlerta.contains('<b>')
+                          ? RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              style: const TextStyle(
+                                fontSize: 20,
+                                color: Colors.black,
+                              ),
+                              children: _parseBoldText(mensajeAlerta),
+                            ),
+                          )
+                          : Text(
+                            mensajeAlerta,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                       const SizedBox(height: 5),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
@@ -800,6 +811,7 @@ class SearchParticipanteController extends GetxController {
     participante.value = null;
     await cargarGanadoresRecientes();
     await cargarInfoGrupo();
+    await actualizarGruposCerrados();
     // Mostrar alert de cierre si se completó el sorteo justo ahora
     if (nuevaPosicion == viviendas && viviendas > 0) {
       mostrarAlerta(
@@ -822,6 +834,10 @@ class SearchParticipanteController extends GetxController {
     final focusNode = FocusNode();
     String errorPinUsuario = '';
     String errorPinEscribano = '';
+    final String errorPin = [
+      errorPinUsuario,
+      errorPinEscribano,
+    ].where((e) => e.isNotEmpty).join(' | ');
     await showGeneralDialog(
       context: context,
       barrierDismissible: false,
@@ -901,6 +917,24 @@ class SearchParticipanteController extends GetxController {
                             ),
                             textAlign: TextAlign.center,
                           ),
+                          if (errorPin.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6, bottom: 6),
+                              child: SizedBox(
+                                width: 140,
+                                child: Text(
+                                  errorPin,
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                  maxLines: 2,
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 10),
                           // Quitar los subtítulos de los pines
                           SizedBox(
@@ -964,12 +998,20 @@ class SearchParticipanteController extends GetxController {
                               onCompleted: (_) {},
                             ),
                           ),
-                          if (errorPinUsuario.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
+                          // Después de los campos de pines, mostrar solo un mensaje de error combinado
+                          if (errorPin.isNotEmpty)
+                            SizedBox(
+                              width: 140,
                               child: Text(
-                                errorPinUsuario,
-                                style: const TextStyle(color: Colors.red),
+                                errorPin,
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 2,
+                                softWrap: true,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           const SizedBox(height: 12),
@@ -1034,11 +1076,18 @@ class SearchParticipanteController extends GetxController {
                             ),
                           ),
                           if (errorPinEscribano.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
+                            SizedBox(
+                              width: 140,
                               child: Text(
                                 errorPinEscribano,
-                                style: const TextStyle(color: Colors.red),
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 2,
+                                softWrap: true,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           const SizedBox(height: 10),
@@ -1159,4 +1208,26 @@ class SearchParticipanteController extends GetxController {
       extentOffset: numeroController.text.length,
     );
   }
+}
+
+List<InlineSpan> _parseBoldText(String text) {
+  final regex = RegExp(r'<b>(.*?)<\/b>');
+  final spans = <InlineSpan>[];
+  int start = 0;
+  for (final match in regex.allMatches(text)) {
+    if (match.start > start) {
+      spans.add(TextSpan(text: text.substring(start, match.start)));
+    }
+    spans.add(
+      TextSpan(
+        text: match.group(1),
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+    start = match.end;
+  }
+  if (start < text.length) {
+    spans.add(TextSpan(text: text.substring(start)));
+  }
+  return spans;
 }

@@ -57,15 +57,24 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
               children: [
                 Text(
                   'Viviendas a sortear: \\ ${controller.viviendasGrupo.value}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 25,
+                  ),
                 ),
                 Text(
                   'Familias empadronadas: \\ ${controller.familiasGrupo.value}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 25,
+                  ),
                 ),
                 Text(
                   'Última posición sorteada: \\ ${controller.ultimaPosicion.value}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 25,
+                  ),
                 ),
               ],
             ),
@@ -88,7 +97,17 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                                 .map(
                                   (barrio) => DropdownMenuItem(
                                     value: barrio,
-                                    child: Text(barrio),
+                                    child: Text(
+                                      barrio,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        color:
+                                            barrio == 'Seleccionar'
+                                                ? Colors.grey
+                                                : null,
+                                      ),
+                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -175,6 +194,7 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
               controller: numeroController,
               focusNode: numeroFocusNode,
               keyboardType: TextInputType.number,
+              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
               decoration: const InputDecoration(
                 labelText: 'Ingresá el Número de Sorteo (Nro de Orden)',
                 border: OutlineInputBorder(),
@@ -192,27 +212,34 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
               },
             ),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed:
-                  (controller.barrioSeleccionado.value != 'Seleccionar' &&
-                          controller.grupoSeleccionado.value != 'Seleccionar')
-                      ? () => controller.buscarParticipante(
-                        context,
-                        onDialogClosed: _tryRequestFocus,
-                      )
-                      : null,
-              icon: const Icon(Icons.search),
-              label: const Text("Buscar participante"),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ElevatedButton.icon(
+                onPressed:
+                    (controller.barrioSeleccionado.value != 'Seleccionar' &&
+                            controller.grupoSeleccionado.value != 'Seleccionar')
+                        ? () => controller.buscarParticipante(
+                          context,
+                          onDialogClosed: _tryRequestFocus,
+                        )
+                        : null,
+                icon: const Icon(Icons.search),
+                label: const Text("Buscar participante"),
+              ),
             ),
             const SizedBox(height: 24),
-            Text(
-              controller.mensaje.value,
-              style: TextStyle(
-                color:
-                    controller.mensaje.value.contains("correctamente")
-                        ? Colors.green
-                        : Colors.red,
-                fontWeight: FontWeight.bold,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                controller.mensaje.value,
+                style: TextStyle(
+                  color:
+                      controller.mensaje.value.contains("correctamente")
+                          ? Colors.green
+                          : Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.left,
               ),
             ),
             const SizedBox(height: 32),
@@ -236,7 +263,7 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.left,
                   ),
                 ),
               ),
@@ -293,7 +320,7 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                                       '${g['full_name']} | Número de SORTEO: \\ ${g['order_number']}' ??
                                           '',
                                       style: TextStyle(
-                                        fontWeight: FontWeight.w500,
+                                        fontWeight: FontWeight.bold,
                                         color:
                                             g['eliminado'] == true
                                                 ? Colors.red.shade700
@@ -311,7 +338,7 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'POSICIÓN: \\ ${g['position']} | DNI: \\${g['document']} | Barrio: \\${g['neighborhood']} | Grupo: \\${g['group']}',
+                                          'POSICIÓN: \\ ${g['position']} | DNI: \\${g['document']}',
                                           style: TextStyle(
                                             color:
                                                 g['eliminado'] == true
@@ -349,15 +376,18 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                                             : Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Text(
-                                                  'Fecha: \\${g['fecha']}',
-                                                  style: TextStyle(
-                                                    color:
-                                                        controller
-                                                                .sorteoCerrado
-                                                                .value
-                                                            ? Colors.green
-                                                            : null,
+                                                SizedBox(
+                                                  width: 60,
+                                                  child: Text(
+                                                    'Fecha: \\${g['fecha']}',
+                                                    style: TextStyle(
+                                                      color:
+                                                          controller
+                                                                  .sorteoCerrado
+                                                                  .value
+                                                              ? Colors.green
+                                                              : null,
+                                                    ),
                                                   ),
                                                 ),
                                                 const SizedBox(width: 8),

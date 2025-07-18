@@ -170,6 +170,13 @@ class _HomePageState extends State<HomePage> {
                   labelType: NavigationRailLabelType.none,
                   extended: isRailExtended,
                   destinations: [
+                    /*NavigationRailDestination(
+                      icon: Icon(Icons.upload_file_rounded, size: 32),
+                      label: Text(
+                        'Crear Sorteo',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),*/
                     NavigationRailDestination(
                       icon: Icon(Icons.upload_file, size: 32),
                       label: Text(
