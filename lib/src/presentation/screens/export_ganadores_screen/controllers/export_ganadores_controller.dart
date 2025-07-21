@@ -35,6 +35,8 @@ class ExportGanadoresController extends GetxController {
   var isLoading = false.obs;
   var sorteoCerrado = false.obs;
   var isExporting = false.obs;
+  // Estado de cierre de cada grupo para el barrio seleccionado
+  var gruposCerrados = <String, bool>{}.obs;
 
   @override
   void onInit() {
@@ -46,7 +48,13 @@ class ExportGanadoresController extends GetxController {
   Future<void> cargarBarrios() async {
     final barriosDb = await DatabaseHelper.obtenerBarrios();
     barrios.value = barriosDb;
-    if (barrios.isNotEmpty && !barrios.contains(barrioSeleccionado.value)) {
+    if (barrios.isEmpty) {
+      barrioSeleccionado.value = '';
+      grupos.value = [];
+      grupoSeleccionado.value = '';
+      return;
+    }
+    if (!barrios.contains(barrioSeleccionado.value)) {
       barrioSeleccionado.value = barrios.first;
     }
     if (barrioSeleccionado.value.isNotEmpty) {
@@ -63,9 +71,54 @@ class ExportGanadoresController extends GetxController {
     );
     final gruposDb = result.map((e) => e['group'] as String).toList();
     grupos.value = gruposDb;
-    if (grupos.isNotEmpty && !grupos.contains(grupoSeleccionado.value)) {
+    if (grupos.isEmpty) {
+      grupoSeleccionado.value = '';
+      return;
+    }
+    if (!grupos.contains(grupoSeleccionado.value)) {
       grupoSeleccionado.value = grupos.first;
     }
+    // Calcular estado de cierre para cada grupo del barrio seleccionado
+    await actualizarGruposCerrados();
+  }
+
+  Future<void> actualizarGruposCerrados() async {
+    gruposCerrados.clear();
+    final db = await DatabaseHelper.database;
+    final barrio = barrioSeleccionado.value;
+    if (barrio.isEmpty) return;
+    final result = await db.rawQuery(
+      'SELECT DISTINCT "group" FROM participantes WHERE neighborhood = ?',
+      [barrio],
+    );
+    for (var row in result) {
+      final grupo = row['group'] as String;
+      // Contar ganadores
+      final countResult = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
+        [barrio, grupo],
+      );
+      final totalGanadores =
+          countResult.first['count'] is int
+              ? countResult.first['count'] as int
+              : int.tryParse(countResult.first['count']?.toString() ?? '0') ??
+                  0;
+      // Obtener viviendas
+      final infoResult = await db.query(
+        'participantes',
+        columns: ['viviendas'],
+        where: 'neighborhood = ? AND "group" = ?',
+        whereArgs: [barrio, grupo],
+        limit: 1,
+      );
+      int viviendas = 0;
+      if (infoResult.isNotEmpty) {
+        final v = infoResult.first['viviendas'];
+        viviendas = v is int ? v : int.tryParse(v?.toString() ?? '0') ?? 0;
+      }
+      gruposCerrados[grupo] = viviendas > 0 && totalGanadores == viviendas;
+    }
+    gruposCerrados.refresh();
   }
 
   /// Maneja el cambio de barrio en el filtro y actualiza los grupos.

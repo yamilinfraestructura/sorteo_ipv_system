@@ -340,12 +340,13 @@ class SearchParticipanteController extends GetxController {
       return;
     }
     final numero = int.tryParse(numeroController.text);
-    if (numero == null) {
-      mensaje.value = "Número inválido  .";
+    if (numero == null || numero == 0) {
+      mensaje.value =
+          "Número inválido. Debe ingresar un número de orden válido mayor a cero.";
       mostrarAlerta(
         context,
         "Número inválido",
-        "Por favor, ingresa un número de orden válido.",
+        "Por favor, ingresa un número de orden válido (mayor a cero).",
         onDialogClosed: onDialogClosed,
       );
       return;
@@ -921,7 +922,7 @@ class SearchParticipanteController extends GetxController {
                             Padding(
                               padding: const EdgeInsets.only(top: 6, bottom: 6),
                               child: SizedBox(
-                                width: 140,
+                                width: ResponsiveConfig.standarSize * 0.4,
                                 child: Text(
                                   errorPin,
                                   style: const TextStyle(
@@ -998,22 +999,6 @@ class SearchParticipanteController extends GetxController {
                               onCompleted: (_) {},
                             ),
                           ),
-                          // Después de los campos de pines, mostrar solo un mensaje de error combinado
-                          if (errorPin.isNotEmpty)
-                            SizedBox(
-                              width: 140,
-                              child: Text(
-                                errorPin,
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 12,
-                                ),
-                                maxLines: 2,
-                                softWrap: true,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
                           const SizedBox(height: 12),
                           SizedBox(
                             width: 220,
@@ -1075,9 +1060,24 @@ class SearchParticipanteController extends GetxController {
                               onCompleted: (_) {},
                             ),
                           ),
-                          if (errorPinEscribano.isNotEmpty)
+                          if (errorPinUsuario.isNotEmpty)
                             SizedBox(
-                              width: 140,
+                              width: ResponsiveConfig.standarSize * 0.4,
+                              child: Text(
+                                errorPinUsuario,
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 2,
+                                softWrap: true,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          else if (errorPinEscribano.isNotEmpty)
+                            SizedBox(
+                              width: ResponsiveConfig.standarSize * 0.4,
                               child: Text(
                                 errorPinEscribano,
                                 style: const TextStyle(

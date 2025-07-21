@@ -17,6 +17,8 @@ class ListGanadoresController extends GetxController {
   var isLoading = false.obs;
   // Estado de cierre del sorteo para el filtro actual
   var sorteoCerrado = false.obs;
+  // Estado de cierre de cada grupo para el barrio seleccionado
+  var gruposCerrados = <String, bool>{}.obs;
 
   @override
   void onInit() {
@@ -45,6 +47,47 @@ class ListGanadoresController extends GetxController {
     if (!grupos.contains(grupoSeleccionado.value)) {
       grupoSeleccionado.value = 'Todos';
     }
+    // Calcular estado de cierre para cada grupo del barrio seleccionado
+    await actualizarGruposCerrados();
+  }
+
+  Future<void> actualizarGruposCerrados() async {
+    gruposCerrados.clear();
+    final db = await DatabaseHelper.database;
+    final barrio = barrioSeleccionado.value;
+    if (barrio == null || barrio == 'Todos') return;
+    final result = await db.rawQuery(
+      'SELECT DISTINCT "group" FROM participantes WHERE neighborhood = ?',
+      [barrio],
+    );
+    for (var row in result) {
+      final grupo = row['group'] as String;
+      // Contar ganadores
+      final countResult = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM ganadores WHERE neighborhood = ? AND "group" = ?',
+        [barrio, grupo],
+      );
+      final totalGanadores =
+          countResult.first['count'] is int
+              ? countResult.first['count'] as int
+              : int.tryParse(countResult.first['count']?.toString() ?? '0') ??
+                  0;
+      // Obtener viviendas
+      final infoResult = await db.query(
+        'participantes',
+        columns: ['viviendas'],
+        where: 'neighborhood = ? AND "group" = ?',
+        whereArgs: [barrio, grupo],
+        limit: 1,
+      );
+      int viviendas = 0;
+      if (infoResult.isNotEmpty) {
+        final v = infoResult.first['viviendas'];
+        viviendas = v is int ? v : int.tryParse(v?.toString() ?? '0') ?? 0;
+      }
+      gruposCerrados[grupo] = viviendas > 0 && totalGanadores == viviendas;
+    }
+    gruposCerrados.refresh();
   }
 
   /// Carga la lista de ganadores según los filtros seleccionados (barrio y grupo).
@@ -106,6 +149,7 @@ class ListGanadoresController extends GetxController {
   /// Actualiza el filtro de barrio y recarga la lista de ganadores.
   void onBarrioChanged(String? val) async {
     barrioSeleccionado.value = val ?? 'Todos';
+    await cargarFiltros();
     await cargarGanadores();
   }
 

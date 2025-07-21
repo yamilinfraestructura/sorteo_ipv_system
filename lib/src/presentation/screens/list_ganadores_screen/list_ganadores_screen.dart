@@ -52,14 +52,59 @@ class ListGanadoresScreen extends StatelessWidget {
                         value: controller.grupoSeleccionado.value,
                         isExpanded: true,
                         items:
-                            controller.grupos
-                                .map(
-                                  (grupo) => DropdownMenuItem(
-                                    value: grupo,
-                                    child: Text(grupo),
+                            controller.grupos.map((grupo) {
+                              final cerrado =
+                                  controller.gruposCerrados[grupo] == true;
+                              return DropdownMenuItem(
+                                value: grupo,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color:
+                                        cerrado ? Colors.green.shade100 : null,
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                )
-                                .toList(),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      if (cerrado) ...[
+                                        const Icon(
+                                          Icons.lock,
+                                          color: Colors.green,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 4),
+                                      ],
+                                      Text(
+                                        grupo,
+                                        style: TextStyle(
+                                          color:
+                                              cerrado
+                                                  ? Colors.green.shade800
+                                                  : null,
+                                          fontWeight:
+                                              cerrado ? FontWeight.bold : null,
+                                        ),
+                                      ),
+                                      if (cerrado)
+                                        const Padding(
+                                          padding: EdgeInsets.only(left: 4),
+                                          child: Text(
+                                            '(CERRADO)',
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                         onChanged: controller.onGrupoChanged,
                       ),
                     ),
@@ -104,13 +149,34 @@ class ListGanadoresScreen extends StatelessWidget {
                 () =>
                     controller.isLoading.value
                         ? const Center(child: CircularProgressIndicator())
+                        : (!(controller.gruposCerrados[controller
+                                    .grupoSeleccionado
+                                    .value] ==
+                                true) &&
+                            controller.barrioSeleccionado.value != 'Todos' &&
+                            controller.grupoSeleccionado.value != 'Todos')
+                        ? const Center(
+                          child: Text(
+                            "El sorteo de este barrio y grupo aún no ha finalizado. No se puede mostrar la lista de ganadores.",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
                         : controller.ganadores.isEmpty
                         ? const Center(
                           child: Text("No hay ganadores registrados."),
                         )
                         : GanadoresListComponent(
                           ganadores: controller.ganadores,
-                          sorteoCerrado: controller.sorteoCerrado.value,
+                          sorteoCerrado:
+                              controller.gruposCerrados[controller
+                                  .grupoSeleccionado
+                                  .value] ==
+                              true,
                         ),
               ),
             ),

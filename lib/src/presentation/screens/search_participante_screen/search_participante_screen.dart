@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 import 'controllers/search_participante_controller.dart';
 
 class SearchParticipanteScreen extends StatefulWidget {
@@ -211,7 +212,7 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                 // El foco se volverá a pedir automáticamente por el listener de ganadoresRecientes
               },
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: ResponsiveConfig.standarSize * 0.01),
             Align(
               alignment: Alignment.centerLeft,
               child: ElevatedButton.icon(
@@ -227,7 +228,7 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                 label: const Text("Buscar participante"),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: ResponsiveConfig.standarSize * 0.01),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -242,7 +243,7 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                 textAlign: TextAlign.left,
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: ResponsiveConfig.standarSize * 0.0005),
             // Mensaje de sorteo cerrado
             if (controller.sorteoCerrado.value)
               Align(
@@ -270,7 +271,8 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
             Expanded(
               child:
                   controller.ganadoresRecientes.isEmpty
-                      ? const Center(
+                      ? Align(
+                        alignment: Alignment.centerLeft,
                         child: Text(
                           'No hay ganadores registrados recientemente.',
                         ),
