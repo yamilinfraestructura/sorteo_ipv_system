@@ -183,6 +183,30 @@ class DatabaseHelper {
             )
           ''');
 
+          // NUEVA TABLA: manzanas
+          await db.execute('''
+            CREATE TABLE manzanas (
+              id_manzana INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_sorteo INTEGER NOT NULL,
+              identificador TEXT NOT NULL,
+              cantidad_viviendas INTEGER NOT NULL,
+              FOREIGN KEY (id_sorteo) REFERENCES sorteos_creados(id_sorteo)
+            )
+          ''');
+
+          // NUEVA TABLA: viviendas
+          await db.execute('''
+            CREATE TABLE viviendas (
+              id_vivienda INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_manzana INTEGER NOT NULL,
+              id_sorteo INTEGER NOT NULL,
+              numero_lote TEXT NOT NULL, -- Puede ser alfanumérico
+              id_ganador INTEGER,
+              FOREIGN KEY (id_manzana) REFERENCES manzanas(id_manzana),
+              FOREIGN KEY (id_sorteo) REFERENCES sorteos_creados(id_sorteo)
+            )
+          ''');
+
           // Modificar ganadores_por_sortear para agregar id_sorteo
           await db.execute('''
             CREATE TABLE ganadores_por_sortear_tmp AS SELECT *, NULL as id_sorteo FROM ganadores_por_sortear;
@@ -551,5 +575,16 @@ class DatabaseHelper {
 
   static Future<String?> getPinEscribano() async {
     return await getSetting('pin_escribano');
+  }
+
+  // Métodos para manzanas y viviendas
+  static Future<int> insertarManzana(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert('manzanas', data);
+  }
+
+  static Future<int> insertarVivienda(Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert('viviendas', data);
   }
 }

@@ -20,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   bool isRailExtended = true;
 
   final List<Widget> _screens = [
-    //CrearSorteoScreen(),
+    CrearSorteoScreen(),
     ImportPadronesScreen(),
     SearchParticipanteScreen(),
     ListGanadoresScreen(),
@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage> {
   ];
 
   final List<String> _titles = [
-    //"Nuevo Sorteo",
+    "Nuevo Sorteo",
     "Importar Participantes",
     "Buscar Ganador",
     "Listado de Ganadores",
@@ -170,13 +170,13 @@ class _HomePageState extends State<HomePage> {
                   labelType: NavigationRailLabelType.none,
                   extended: isRailExtended,
                   destinations: [
-                    /*NavigationRailDestination(
+                    NavigationRailDestination(
                       icon: Icon(Icons.upload_file_rounded, size: 32),
                       label: Text(
                         'Crear Sorteo',
                         style: TextStyle(fontSize: 18),
                       ),
-                    ),*/
+                    ),
                     NavigationRailDestination(
                       icon: Icon(Icons.upload_file, size: 32),
                       label: Text(
