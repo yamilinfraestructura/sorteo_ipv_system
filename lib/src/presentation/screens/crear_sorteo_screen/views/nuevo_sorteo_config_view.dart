@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import '../../../../../src/data/helper/db/database_helper.dart';
-import '../controllers/crear_sorteo_controller.dart';
 
 class NuevoSorteoConfigView extends StatefulWidget {
   final Function(int idSorteo) onSorteoCreado;
+  // ignore: use_super_parameters
   const NuevoSorteoConfigView({Key? key, required this.onSorteoCreado})
     : super(key: key);
 

@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
@@ -790,6 +791,7 @@ class SearchParticipanteController extends GetxController {
         nuevaPosicion = i + 1;
       }
     }
+    // Guardar en SQLite local
     await db.insert('ganadores', {
       'participanteId': participante.value!['id'],
       'fecha': DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
@@ -800,6 +802,20 @@ class SearchParticipanteController extends GetxController {
       'document': participante.value!['document'],
       'full_name': participante.value!['full_name'],
     });
+
+    // Guardar también en Firestore (sincronización híbrida)
+    final fecha = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+    await FirestoreService.guardarGanador(
+      barrio: participante.value!['neighborhood'],
+      grupo: participante.value!['group'],
+      participanteId: participante.value!['id'],
+      orderNumber: participante.value!['order_number'],
+      fullName: participante.value!['full_name'],
+      document: participante.value!['document'],
+      position: nuevaPosicion,
+      fecha: fecha,
+    );
+
     // Obtener el id del último ganador insertado
     final idResult = await db.rawQuery('SELECT last_insert_rowid() as id');
     if (idResult.isNotEmpty) {
@@ -1180,7 +1196,17 @@ class SearchParticipanteController extends GetxController {
       try {
         final loginCtrl = Get.find<LoginController>();
         final idUser = loginCtrl.usuarioLogueado.value?['id_user'] ?? 0;
+
+        // Eliminar de SQLite local
         await DatabaseHelper.eliminarGanadorPorId(ganador['id'] as int, idUser);
+
+        // Eliminar también de Firestore
+        await FirestoreService.eliminarGanador(
+          barrio: ganador['neighborhood'],
+          grupo: ganador['group'],
+          orderNumber: ganador['order_number'],
+        );
+
         await cargarGanadoresRecientes();
         await cargarInfoGrupo();
         mensaje.value = 'Ganador eliminado correctamente.';

@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_null_comparison, curly_braces_in_flow_control_structures, prefer_interpolation_to_compose_strings
+
 import 'package:get/get.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as excel;
