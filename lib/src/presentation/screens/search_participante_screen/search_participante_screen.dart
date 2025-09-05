@@ -190,28 +190,8 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            // Campo búsqueda
-            TextField(
-              controller: numeroController,
-              focusNode: numeroFocusNode,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                labelText: 'Ingresá el Número de Sorteo (Nro de Orden)',
-                border: OutlineInputBorder(),
-              ),
-              enabled:
-                  controller.barrioSeleccionado.value != 'Seleccionar' &&
-                  controller.grupoSeleccionado.value != 'Seleccionar' &&
-                  !controller.sorteoCerrado.value,
-              onSubmitted: (_) {
-                controller.buscarParticipante(
-                  context,
-                  onDialogClosed: _tryRequestFocus,
-                );
-                // El foco se volverá a pedir automáticamente por el listener de ganadoresRecientes
-              },
-            ),
+            // Campo búsqueda con formato de contador
+            _buildCounterInputField(),
             SizedBox(height: ResponsiveConfig.standarSize * 0.01),
             Align(
               alignment: Alignment.centerLeft,
@@ -319,8 +299,7 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
                                             )
                                             : null,
                                     title: Text(
-                                      '${g['full_name']} | Número de SORTEO: \\ ${g['order_number']}' ??
-                                          '',
+                                      '${g['full_name'] ?? ''} | Número de SORTEO: \\ ${controller.formatearNumeroSorteo(g['order_number'])}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color:
@@ -420,5 +399,67 @@ class _SearchParticipanteScreenState extends State<SearchParticipanteScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildCounterInputField() {
+    return Obx(() {
+      // Calcular el número de dígitos basado en las familias empadronadas
+      final familias = controller.familiasGrupo.value;
+      int digitos = 3; // Mínimo 3 dígitos
+
+      if (familias > 0) {
+        // Calcular dígitos necesarios basado en el número de familias
+        digitos = familias.toString().length;
+        // Asegurar mínimo 3 dígitos
+        if (digitos < 3) digitos = 3;
+      }
+
+      return TextField(
+        controller: numeroController,
+        focusNode: numeroFocusNode,
+        keyboardType: TextInputType.number,
+        style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        decoration: InputDecoration(
+          labelText: 'Ingresá el Número de Sorteo (Nro de Orden)',
+          hintText: '0'.padLeft(digitos, '0'), // Mostrar formato como hint
+          border: const OutlineInputBorder(),
+          helperText:
+              'Formato: ${'0'.padLeft(digitos, '0')} (${familias} familias empadronadas)',
+          prefixIcon: const Icon(Icons.confirmation_number),
+        ),
+        enabled:
+            controller.barrioSeleccionado.value != 'Seleccionar' &&
+            controller.grupoSeleccionado.value != 'Seleccionar' &&
+            !controller.sorteoCerrado.value,
+        onChanged: (value) {
+          // Formatear el número con ceros a la izquierda
+          if (value.isNotEmpty) {
+            final numero = int.tryParse(value);
+            if (numero != null) {
+              final numeroFormateado = numero.toString().padLeft(digitos, '0');
+              if (numeroFormateado != value) {
+                // Actualizar el texto con el formato correcto
+                numeroController.value = TextEditingValue(
+                  text: numeroFormateado,
+                  selection: TextSelection.collapsed(
+                    offset: numeroFormateado.length,
+                  ),
+                );
+              }
+            }
+          } else {
+            // Si el campo está vacío, limpiar el controlador
+            numeroController.clear();
+          }
+        },
+        onSubmitted: (_) {
+          controller.buscarParticipante(
+            context,
+            onDialogClosed: _tryRequestFocus,
+          );
+          // El foco se volverá a pedir automáticamente por el listener de ganadoresRecientes
+        },
+      );
+    });
   }
 }

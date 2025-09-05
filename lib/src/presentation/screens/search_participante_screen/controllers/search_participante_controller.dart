@@ -660,7 +660,7 @@ class SearchParticipanteController extends GetxController {
                               ),
                             ),
                             Text(
-                              "Nro de Sorteo: \\${part['order_number']}",
+                              "Nro de Sorteo: \\${formatearNumeroSorteo(part['order_number'])}",
                               style: TextStyle(
                                 fontSize: ResponsiveConfig.bodySize,
                               ),
@@ -1207,6 +1207,23 @@ class SearchParticipanteController extends GetxController {
       baseOffset: 0,
       extentOffset: numeroController.text.length,
     );
+  }
+
+  /// Formatea el número de sorteo con ceros a la izquierda basado en las familias empadronadas
+  String formatearNumeroSorteo(dynamic orderNumber) {
+    if (orderNumber == null) return '000';
+
+    final numero = int.tryParse(orderNumber.toString()) ?? 0;
+    final familias = familiasGrupo.value;
+
+    // Calcular dígitos necesarios basado en el número de familias
+    int digitos = 3; // Mínimo 3 dígitos
+    if (familias > 0) {
+      digitos = familias.toString().length;
+      if (digitos < 3) digitos = 3;
+    }
+
+    return numero.toString().padLeft(digitos, '0');
   }
 }
 
