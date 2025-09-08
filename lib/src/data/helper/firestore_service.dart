@@ -85,6 +85,43 @@ class FirestoreService {
         .snapshots();
   }
 
+  /// Guarda un participante en Firestore (solo campos básicos)
+  static Future<void> guardarParticipante({
+    required String fullName,
+    required String document,
+    required String neighborhood,
+  }) async {
+    try {
+      await _firestore.collection('participantes').add({
+        'fullName': fullName,
+        'document': document,
+        'neighborhood': neighborhood,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Participante guardado en Firestore: $fullName');
+    } catch (e) {
+      print('❌ Error al guardar participante en Firestore: $e');
+    }
+  }
+
+  /// Verifica si un DNI existe en los participantes
+  static Future<bool> verificarDNI(String document) async {
+    try {
+      final query =
+          await _firestore
+              .collection('participantes')
+              .where('document', isEqualTo: document)
+              .limit(1)
+              .get();
+
+      return query.docs.isNotEmpty;
+    } catch (e) {
+      print('❌ Error al verificar DNI en Firestore: $e');
+      return false;
+    }
+  }
+
   /// Verifica la conexión con Firestore
   static Future<bool> verificarConexion() async {
     try {

@@ -1,6 +1,7 @@
 // Controlador para la pantalla de importación de padrones
 import 'package:get/get.dart';
 import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
+import 'package:sorteo_ipv_system/src/data/helper/firestore_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -366,6 +367,17 @@ class ImportPadronesController extends GetxController {
         if (participantes.isNotEmpty) {
           mensaje.value = 'Guardando participantes en la base de datos...';
           await DatabaseHelper.insertarParticipantesLote(participantes);
+
+          // Guardar también en Firestore (solo campos básicos)
+          mensaje.value = 'Sincronizando participantes con Firestore...';
+          for (var participante in participantes) {
+            await FirestoreService.guardarParticipante(
+              fullName: participante['full_name'],
+              document: participante['document'],
+              neighborhood: participante['neighborhood'],
+            );
+          }
+
           await cargarBarrios();
           // Notificar al controlador de búsqueda para que recargue barrios y grupos
           final searchController =
