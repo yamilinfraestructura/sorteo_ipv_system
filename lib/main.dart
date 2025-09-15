@@ -10,7 +10,17 @@ import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  try {
+    print('🔥 Inicializando Firebase...');
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('✅ Firebase inicializado correctamente');
+  } catch (e) {
+    print('❌ Error al inicializar Firebase: $e');
+  }
+
   runApp(const MyApp());
 }
 

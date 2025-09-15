@@ -16,8 +16,6 @@ import 'dart:async';
 import 'package:sorteo_ipv_system/src/data/helper/synology/synology_nas_helper.dart';
 import 'package:sorteo_ipv_system/src/data/helper/ftp/ftp_helper.dart';
 import 'package:path/path.dart' as p;
-import 'package:sorteo_ipv_system/src/data/helper/supabase/db_supabase_helper.dart';
-import 'package:dio/dio.dart';
 
 // Controlador para la pantalla de exportación de ganadores
 class ExportGanadoresController extends GetxController {
@@ -1662,7 +1660,12 @@ class ExportGanadoresController extends GetxController {
 
       if ((barrioSeleccionado.value?.isEmpty ?? true) ||
           (grupoSeleccionado.value?.isEmpty ?? true)) {
-        mostrarMensaje(context, 'Seleccioná un barrio y grupo para exportar.');
+        if (context.mounted) {
+          mostrarMensaje(
+            context,
+            'Seleccioná un barrio y grupo para exportar.',
+          );
+        }
         return;
       }
       final db = await DatabaseHelper.database;
@@ -1673,10 +1676,12 @@ class ExportGanadoresController extends GetxController {
         orderBy: 'position ASC',
       );
       if (ganadores.isEmpty) {
-        mostrarMensaje(
-          context,
-          'No hay ganadores registrados para este barrio y grupo.',
-        );
+        if (context.mounted) {
+          mostrarMensaje(
+            context,
+            'No hay ganadores registrados para este barrio y grupo.',
+          );
+        }
         return;
       }
       final participante = await db.query(
@@ -1882,36 +1887,15 @@ class ExportGanadoresController extends GetxController {
                       ) ??
                       0)
               : 0;
-      // 2. Consultar en Supabase cuántos ganadores ya existen para ese barrio y grupo
-      int ganadoresSupabaseCount = 0;
-      try {
-        final response = await dio.get(
-          '/ganadores',
-          queryParameters: {
-            'neighborhood': 'eq.${barrioSeleccionado.value}',
-            'grupo_barrio': 'eq.${grupoSeleccionado.value}',
-            'select': 'id',
-          },
-        );
-        if (response.statusCode == 200 && response.data is List) {
-          ganadoresSupabaseCount = (response.data as List).length;
+      // 2. Validar que no se exceda el cupo de viviendas
+      if (ganadores.length > viviendasCupo) {
+        if (context.mounted) {
+          mostrarAlerta(
+            context,
+            'El grupo del barrio elegido ya completó el sorteo. No se pueden registrar más ganadores (Cupo: $viviendasCupo, ganadores a exportar: ${ganadores.length}).',
+            exito: false,
+          );
         }
-      } catch (e) {
-        mostrarAlerta(
-          context,
-          'No se pudo validar el cupo de ganadores en Supabase. Intenta de nuevo.',
-          exito: false,
-        );
-        return;
-      }
-      // 3. Sumar los ganadores a exportar
-      final totalGanadores = ganadoresSupabaseCount + ganadores.length;
-      if (totalGanadores > viviendasCupo) {
-        mostrarAlerta(
-          context,
-          'El grupo del barrio elegido ya completó el sorteo. No se pueden registrar más ganadores (Cupo: $viviendasCupo, ya registrados: $ganadoresSupabaseCount).',
-          exito: false,
-        );
         return;
       }
 
@@ -1928,10 +1912,12 @@ class ExportGanadoresController extends GetxController {
           user.isEmpty ||
           password.isEmpty ||
           remoteDir.isEmpty) {
-        mostrarMensaje(
-          context,
-          'Configurá los datos del FTP en la pantalla de configuración.',
-        );
+        if (context.mounted) {
+          mostrarMensaje(
+            context,
+            'Configurá los datos del FTP en la pantalla de configuración.',
+          );
+        }
         return;
       }
       final ftpHelper = FtpHelper(
@@ -1946,86 +1932,46 @@ class ExportGanadoresController extends GetxController {
         remoteDir: remoteDir,
         remoteFileName: fileName,
       );
-      if (ok) {
-        mostrarMensaje(context, '¡Archivo subido correctamente por FTP!');
-      } else {
-        mostrarMensaje(context, 'Falló la subida por FTP.');
-      }
 
-      // Paso 2: Respaldar en Supabase
-      // Preparar los datos de ganadores para Supabase
-      final ganadoresSupabase = <Map<String, dynamic>>[];
-      for (var ganador in ganadores) {
-        final participante = await db.query(
-          'participantes',
-          where: 'id = ?',
-          whereArgs: [ganador['participanteId']],
-        );
-        if (participante.isNotEmpty) {
-          final participanteData = participante.first;
-          ganadoresSupabase.add({
-            'participanteId':
-                ganador['participanteId'] is int
-                    ? ganador['participanteId']
-                    : int.tryParse(ganador['participanteId'].toString()) ?? 0,
-            'fecha':
-                ganador['fecha']?.toString() ??
-                DateTime.now().toIso8601String(),
-            'neighborhood': participanteData['neighborhood']?.toString() ?? '',
-            'grupo_barrio': participanteData['group']?.toString() ?? '',
-            'position':
-                ganador['position'] is int
-                    ? ganador['position']
-                    : int.tryParse(ganador['position'].toString()) ?? 0,
-            'order_number':
-                participanteData['order_number'] is int
-                    ? participanteData['order_number']
-                    : int.tryParse(
-                          participanteData['order_number'].toString(),
-                        ) ??
-                        0,
-            'document': participanteData['document']?.toString() ?? '',
-            'full_name': participanteData['full_name']?.toString() ?? '',
-            'id_user':
-                ganador['id_user'] is int
-                    ? ganador['id_user']
-                    : int.tryParse(ganador['id_user'].toString()) ?? 0,
-          });
+      // Verificar si el contexto sigue siendo válido antes de mostrar mensajes
+      if (context.mounted) {
+        if (ok) {
+          mostrarMensaje(context, '¡Archivo subido correctamente por FTP!');
+        } else {
+          mostrarMensaje(context, 'Falló la subida por FTP.');
         }
       }
-      final respaldoOk = await respaldarGanadoresEnSupabase(ganadoresSupabase);
-      if (respaldoOk) {
-        mostrarMensaje(context, '¡Ganadores respaldados en Supabase!');
-      } else {
-        mostrarMensaje(context, 'Falló el respaldo en Supabase.');
-      }
 
-      // Paso 3: Guardado local (selección de directorio)
+      // Paso 2: Guardado local (selección de directorio)
       final savePath = await FilePicker.platform.getDirectoryPath(
         dialogTitle: 'Selecciona una carpeta para guardar el Excel',
       );
-      if (savePath != null && savePath is String) {
-        final localFile = File(p.join(savePath, fileName));
-        try {
-          await localFile.writeAsBytes(fileBytes);
+
+      // Verificar contexto antes de mostrar alertas
+      if (context.mounted) {
+        if (savePath != null && savePath is String) {
+          final localFile = File(p.join(savePath, fileName));
+          try {
+            await localFile.writeAsBytes(fileBytes);
+            mostrarAlerta(
+              context,
+              'Archivo guardado localmente en: ${localFile.path}',
+              exito: true,
+            );
+          } catch (e) {
+            mostrarAlerta(
+              context,
+              'No se pudo guardar el archivo porque está abierto en otro programa o en uso.\nPor favor, ciérralo e intenta nuevamente.',
+              exito: false,
+            );
+          }
+        } else {
           mostrarAlerta(
             context,
-            'Archivo guardado localmente en: ${localFile.path}',
-            exito: true,
-          );
-        } catch (e) {
-          mostrarAlerta(
-            context,
-            'No se pudo guardar el archivo porque está abierto en otro programa o en uso.\nPor favor, ciérralo e intenta nuevamente.',
+            'No se seleccionó carpeta para guardado local.',
             exito: false,
           );
         }
-      } else {
-        mostrarAlerta(
-          context,
-          'No se seleccionó carpeta para guardado local.',
-          exito: false,
-        );
       }
     } finally {
       isExporting.value = false;

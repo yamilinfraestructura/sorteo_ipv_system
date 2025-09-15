@@ -16,7 +16,12 @@ class FirestoreService {
     required String fecha,
   }) async {
     try {
-      await _firestore.collection('ganadores').add({
+      print('🔥 Iniciando guardado en Firestore...');
+      print(
+        '🔥 Datos: $barrio, $grupo, $participanteId, $orderNumber, $fullName, $document, $position, $fecha',
+      );
+
+      final docRef = await _firestore.collection('ganadores').add({
         'barrio': barrio,
         'grupo': grupo,
         'participanteId': participanteId,
@@ -29,9 +34,11 @@ class FirestoreService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Ganador guardado en Firestore: $fullName - Posición $position');
+      print('✅ Ganador guardado en Firestore con ID: ${docRef.id}');
+      print('✅ Ganador: $fullName - Posición $position');
     } catch (e) {
       print('❌ Error al guardar en Firestore: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       // No lanzamos excepción para que no afecte el funcionamiento local
     }
   }
@@ -125,11 +132,49 @@ class FirestoreService {
   /// Verifica la conexión con Firestore
   static Future<bool> verificarConexion() async {
     try {
-      await _firestore.collection('ganadores').limit(1).get();
+      print('🔥 Verificando conexión con Firestore...');
+      final result = await _firestore.collection('ganadores').limit(1).get();
+      print(
+        '✅ Conexión con Firestore exitosa. Documentos encontrados: ${result.docs.length}',
+      );
       return true;
     } catch (e) {
       print('❌ Error de conexión con Firestore: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       return false;
+    }
+  }
+
+  /// Método de prueba para verificar que Firestore funciona
+  static Future<void> probarConexion() async {
+    try {
+      print('🔥 Iniciando prueba de conexión con Firestore...');
+
+      // Verificar conexión
+      final conexionOk = await verificarConexion();
+      if (!conexionOk) {
+        print('❌ No se pudo conectar a Firestore');
+        return;
+      }
+
+      // Intentar agregar un documento de prueba
+      print('🔥 Intentando agregar documento de prueba...');
+      final docRef = await _firestore.collection('ganadores').add({
+        'test': true,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Documento de prueba agregado con ID: ${docRef.id}');
+
+      // Eliminar el documento de prueba
+      await docRef.delete();
+      print('✅ Documento de prueba eliminado');
+
+      print('✅ Prueba de conexión completada exitosamente');
+    } catch (e) {
+      print('❌ Error en prueba de conexión: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
     }
   }
 }

@@ -31,6 +31,13 @@ class SearchParticipanteController extends GetxController {
   void onInit() {
     super.onInit();
     cargarDatos();
+    // Probar conexión con Firestore al inicializar
+    _probarFirestore();
+  }
+
+  Future<void> _probarFirestore() async {
+    print('🔥 Probando conexión con Firestore...');
+    await FirestoreService.probarConexion();
   }
 
   Future<void> cargarDatos() async {
@@ -805,6 +812,11 @@ class SearchParticipanteController extends GetxController {
 
     // Guardar también en Firestore (sincronización híbrida)
     final fecha = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+    print('🔥 Llamando a FirestoreService.guardarGanador...');
+    print('🔥 Participante: ${participante.value!['full_name']}');
+    print('🔥 Barrio: ${participante.value!['neighborhood']}');
+    print('🔥 Grupo: ${participante.value!['group']}');
+
     await FirestoreService.guardarGanador(
       barrio: participante.value!['neighborhood'],
       grupo: participante.value!['group'],
@@ -815,6 +827,8 @@ class SearchParticipanteController extends GetxController {
       position: nuevaPosicion,
       fecha: fecha,
     );
+
+    print('🔥 Llamada a FirestoreService.guardarGanador completada');
 
     // Obtener el id del último ganador insertado
     final idResult = await db.rawQuery('SELECT last_insert_rowid() as id');
