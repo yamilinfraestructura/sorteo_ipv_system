@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 import 'package:sorteo_ipv_system/src/data/helper/db/database_helper.dart';
-import 'package:sorteo_ipv_system/src/data/helper/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
@@ -31,13 +30,6 @@ class SearchParticipanteController extends GetxController {
   void onInit() {
     super.onInit();
     cargarDatos();
-    // Probar conexión con Firestore al inicializar
-    _probarFirestore();
-  }
-
-  Future<void> _probarFirestore() async {
-    print('🔥 Probando conexión con Firestore...');
-    await FirestoreService.probarConexion();
   }
 
   Future<void> cargarDatos() async {
@@ -810,26 +802,6 @@ class SearchParticipanteController extends GetxController {
       'full_name': participante.value!['full_name'],
     });
 
-    // Guardar también en Firestore (sincronización híbrida)
-    final fecha = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
-    print('🔥 Llamando a FirestoreService.guardarGanador...');
-    print('🔥 Participante: ${participante.value!['full_name']}');
-    print('🔥 Barrio: ${participante.value!['neighborhood']}');
-    print('🔥 Grupo: ${participante.value!['group']}');
-
-    await FirestoreService.guardarGanador(
-      barrio: participante.value!['neighborhood'],
-      grupo: participante.value!['group'],
-      participanteId: participante.value!['id'],
-      orderNumber: participante.value!['order_number'],
-      fullName: participante.value!['full_name'],
-      document: participante.value!['document'],
-      position: nuevaPosicion,
-      fecha: fecha,
-    );
-
-    print('🔥 Llamada a FirestoreService.guardarGanador completada');
-
     // Obtener el id del último ganador insertado
     final idResult = await db.rawQuery('SELECT last_insert_rowid() as id');
     if (idResult.isNotEmpty) {
@@ -1213,13 +1185,6 @@ class SearchParticipanteController extends GetxController {
 
         // Eliminar de SQLite local
         await DatabaseHelper.eliminarGanadorPorId(ganador['id'] as int, idUser);
-
-        // Eliminar también de Firestore
-        await FirestoreService.eliminarGanador(
-          barrio: ganador['neighborhood'],
-          grupo: ganador['group'],
-          orderNumber: ganador['order_number'],
-        );
 
         await cargarGanadoresRecientes();
         await cargarInfoGrupo();

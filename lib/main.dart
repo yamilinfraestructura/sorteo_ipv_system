@@ -1,26 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
 ///Importación de archivos
 import 'package:sorteo_ipv_system/src/config/bindings/app_binding.dart';
 import 'package:sorteo_ipv_system/src/config/router/app_router.dart';
 import 'package:sorteo_ipv_system/src/config/themes/responsive_config.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    print('🔥 Inicializando Firebase...');
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    print('✅ Firebase inicializado correctamente');
-  } catch (e) {
-    print('❌ Error al inicializar Firebase: $e');
-  }
-
   runApp(const MyApp());
 }
 
